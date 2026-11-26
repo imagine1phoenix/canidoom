@@ -240,3 +240,6 @@ _vizdoom/
 
 .DS_Store
 */.DS_Store
+!submission/**
+submission/__pycache__/
+submission/**/*.py[cod]
