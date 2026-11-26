@@ -75,6 +75,24 @@ class DoomAgent:
 
         self.model.eval()
 
+        # Warm up JIT and CUDA/CPU GEMM kernels to eliminate first-step latency spike
+        try:
+            with torch.inference_mode():
+                dummy_in = ModelInputs(
+                    rays=torch.zeros((1, 8, 64), dtype=torch.float32, device=device),
+                    ent_feats=torch.zeros((1, 32, 5), dtype=torch.float32, device=device),
+                    ent_types=torch.zeros((1, 32), dtype=torch.int64, device=device),
+                    ent_mask=torch.zeros((1, 32), dtype=torch.bool, device=device),
+                    vitals=torch.zeros((1, 36), dtype=torch.float32, device=device),
+                    rgb_depth=torch.zeros((1, 4, 48, 64), dtype=torch.float32, device=device),
+                    grid=torch.zeros((1, 6, 32, 32), dtype=torch.float32, device=device),
+                    action_mask=torch.ones((1, 9), dtype=torch.bool, device=device),
+                    d_theta=torch.zeros((1,), dtype=torch.float32, device=device),
+                )
+                self.model(dummy_in)
+        except Exception:
+            pass
+
         # Seeded deterministic RNG reset on every map
         self.rng = np.random.default_rng(0)
         self.odom_state: OdomGridState | None = None
@@ -170,27 +188,35 @@ class DoomAgent:
         rand_vals = self.rng.random(len(probs))
         action = (rand_vals < probs).astype(np.int8)
 
-        # 4. Mutual exclusion conflict resolution (soft stabilization)
-        # MOVE_FORWARD (0) vs MOVE_BACKWARD (1)
-        if action[0] == 1 and action[1] == 1:
-            if logits_arr[0] >= logits_arr[1]:
-                action[1] = 0
-            else:
-                action[0] = 0
+        # 4. Anti-stutter stabilization & mutual exclusion conflict resolution
+        # When model has forward intent (logits > 0), do not randomly stall forward motion
+        if logits_arr[0] > 0.0 and logits_arr[0] >= logits_arr[1]:
+            action[0] = 1
+            action[1] = 0
+        elif logits_arr[1] > 0.0 and logits_arr[1] > logits_arr[0]:
+            action[1] = 1
+            action[0] = 0
 
-        # MOVE_LEFT (2) vs MOVE_RIGHT (3)
+        # STRAFE conflict resolution (MOVE_LEFT (2) vs MOVE_RIGHT (3))
         if action[2] == 1 and action[3] == 1:
             if logits_arr[2] >= logits_arr[3]:
                 action[3] = 0
             else:
                 action[2] = 0
 
-        # TURN_LEFT (4) vs TURN_RIGHT (5)
+        # TURN conflict resolution & anti-oscillation:
+        # Prevent rapid alternating left-right twitching by committing to dominant turn
         if action[4] == 1 and action[5] == 1:
             if logits_arr[4] >= logits_arr[5]:
                 action[5] = 0
             else:
                 action[4] = 0
+        elif logits_arr[4] > 0.2 and logits_arr[4] > logits_arr[5] + 0.15:
+            action[4] = 1
+            action[5] = 0
+        elif logits_arr[5] > 0.2 and logits_arr[5] > logits_arr[4] + 0.15:
+            action[5] = 1
+            action[4] = 0
 
         # 5. Enforce observation action mask strictly
         act_mask = inputs.action_mask.squeeze(0).cpu().numpy()

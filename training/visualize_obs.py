@@ -146,7 +146,8 @@ def _draw_game_stage(
     ckpt_txt = small_font.render(f"Ckpt: {hud_meta.get('ckpt_step', 0):,} stp (u{hud_meta.get('ckpt_upd', 0)})", True, CLR_TEXT_MUTED)
     screen.blit(ckpt_txt, (x + 280, y + 9))
     
-    perf_txt = small_font.render(f"Act: {hud_meta.get('act_ms', 0.0):.2f} ms | Ep #{hud_meta.get('episode', 1)} Stp {hud_meta.get('ep_step', 0)}", True, CLR_ACCENT_CYAN)
+    fps_str = hud_meta.get("fps_str", "35 FPS")
+    perf_txt = small_font.render(f"Act: {hud_meta.get('act_ms', 0.0):.2f} ms | {fps_str} | Ep #{hud_meta.get('episode', 1)} Stp {hud_meta.get('ep_step', 0)}", True, CLR_ACCENT_CYAN)
     screen.blit(perf_txt, (x + w - perf_txt.get_width() - 10, y + 9))
 
     # Main First-Person Game Viewport (720x540)
@@ -574,7 +575,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--teacher", action="store_true", help="Watch the training-only Privileged Teacher Bot live.")
     parser.add_argument("--random-maps", action="store_true", help="Sample fresh Tier 1-4 maps on each episode.")
     parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"])
-    parser.add_argument("--fps", type=int, default=15, help="Spectator render FPS.")
+    parser.add_argument("--fps", type=int, default=35, help="Spectator render FPS (default: 35 for native DOOM speed; set 0 for uncapped).")
     parser.add_argument("--save-screenshot", type=str, default=None, help="Run N steps and save PNG frame then exit.")
     parser.add_argument("--screenshot-steps", type=int, default=12, help="Steps before --save-screenshot captures.")
     args = parser.parse_args(argv)
@@ -679,6 +680,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     ent_hist: deque[float] = deque(maxlen=90)
 
     last_watch_check = time.perf_counter()
+    current_fps = max(0, args.fps)
+    paused = False
     running = True
     try:
         while running:
@@ -691,6 +694,18 @@ def main(argv: Optional[list[str]] = None) -> int:
                         running = False
                     elif event.key == pygame.K_r:
                         force_new_map = True
+                    elif event.key == pygame.K_SPACE:
+                        paused = not paused
+                    elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_RIGHTBRACKET, pygame.K_UP):
+                        current_fps = min(120, (35 if current_fps == 0 else current_fps + 10))
+                    elif event.key in (pygame.K_MINUS, pygame.K_LEFTBRACKET, pygame.K_DOWN):
+                        current_fps = max(5, (35 if current_fps == 0 else current_fps - 5))
+                    elif event.key in (pygame.K_0, pygame.K_u):
+                        current_fps = 0  # Uncapped max speed!
+
+            if paused:
+                clock.tick(15)
+                continue
 
             # Hot-reload checkpoint every ~2 seconds if --watch is active
             if agent is not None and args.watch and ckpt_path is not None:
@@ -764,6 +779,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "ep_step": ep_step,
                 "exits": exits_count,
                 "act_ms": act_ms,
+                "fps_str": (f"{current_fps} FPS (+/-)" if current_fps > 0 else "MAX SPEED [0]") + (" [PAUSED]" if paused else ""),
                 "kills": int(priv_now.get("kills", 0)),
             }
 
@@ -841,7 +857,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(f"[Spectator] Saved screenshot: {out_png}", flush=True)
                 break
 
-            clock.tick(max(1, args.fps))
+            if current_fps > 0:
+                clock.tick(current_fps)
     finally:
         env.close()
         pygame.quit()
