@@ -237,3 +237,6 @@ _vizdoom/
 # Video / Replays
 *.mp4
 *.avi
+
+.DS_Store
+*/.DS_Store
