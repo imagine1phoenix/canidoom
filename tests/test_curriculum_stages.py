@@ -84,3 +84,19 @@ def test_weight_average_state_dicts_combines_hybrid_nets():
     merged = weight_average_state_dicts([m1.state_dict(), m2.state_dict()], [100.0, 100.0], temperature=50.0)
     first_key = next(iter(merged))
     assert torch.allclose(merged[first_key], torch.full_like(merged[first_key], 2.0), atol=1e-5)
+
+
+def test_resumed_stage_respects_stage_start_step():
+    cur = StageCurriculum(
+        stage_idx=2,
+        stage_max=4,
+        min_episodes=32,
+        window=40,
+        min_steps_per_stage=16_384,
+        max_steps_per_stage=400_000,
+        stage_start_step=931_328,
+    )
+    for _ in range(4):
+        cur.report_episode(True)
+    assert cur.maybe_advance(932_352) is None and cur.stage_idx == 2
+    assert cur.maybe_advance(931_328 + 400_000) is not None and cur.stage_idx == 3

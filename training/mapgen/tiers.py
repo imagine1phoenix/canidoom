@@ -20,6 +20,8 @@ import math
 import os
 import shutil
 import subprocess
+import time
+import uuid
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -292,6 +294,29 @@ def _compile_udmf(
             f"skill1 = true; skill2 = true; skill3 = true; skill4 = true; skill5 = true; single = true; }}"
         )
     return "\n".join(lines_out) + "\n"
+
+
+def _finalize_wad(raw_wad: Path, final_wad: Path) -> Path:
+    """Promote `raw_wad` to `final_wad`, tolerating transient Windows/OneDrive locks."""
+    for attempt in range(5):
+        try:
+            raw_wad.replace(final_wad)
+            return final_wad
+        except PermissionError:
+            if final_wad.is_file() and final_wad.stat().st_size >= 12:
+                try:
+                    raw_wad.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                return final_wad
+            time.sleep(0.02 * (attempt + 1))
+    if final_wad.is_file() and final_wad.stat().st_size >= 12:
+        try:
+            raw_wad.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return final_wad
+    return raw_wad
 
 
 class MapGen:
@@ -768,8 +793,11 @@ class MapGen:
             json.dumps(knobs_for_hash, sort_keys=True, default=str).encode("utf-8")
         ).hexdigest()[:8]
         tag = f"t{tier}_{scenario}_s{int(seed)}_a{int(round(alpha * 100))}_k{knobs_hash}_p{os.getpid()}"
-        raw_wad = target_dir / f"{tag}_raw.wad"
         final_wad = target_dir / f"{tag}.wad"
+        if final_wad.is_file() and final_wad.stat().st_size >= 12:
+            return GeneratedMap(final_wad, "MAP01")
+
+        raw_wad = target_dir / f"{tag}_{uuid.uuid4().hex[:6]}_raw.wad"
 
         write_wad(
             raw_wad,
@@ -789,11 +817,13 @@ class MapGen:
                 timeout=15,
             )
             if proc.returncode == 0 and final_wad.is_file():
-                raw_wad.unlink(missing_ok=True)
+                try:
+                    raw_wad.unlink(missing_ok=True)
+                except OSError:
+                    pass
                 return GeneratedMap(final_wad, "MAP01")
 
-        raw_wad.replace(final_wad)
-        return GeneratedMap(final_wad, "MAP01")
+        return GeneratedMap(_finalize_wad(raw_wad, final_wad), "MAP01")
 
 
 def wad_sha256(path: str | Path) -> str:

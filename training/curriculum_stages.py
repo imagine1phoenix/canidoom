@@ -107,12 +107,14 @@ class StageCurriculum:
     buffer_capacity: int = 128
     seed: int = 7
     state_path: Optional[Path] = None
+    stage_start_step: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.rng = np.random.default_rng(self.seed)
         self._exits: deque[float] = deque(maxlen=self.window)
         self._episodes_in_stage = 0
-        self._stage_start_step = 0
+        self._stage_start_initialized = self.stage_start_step is not None
+        self._stage_start_step = 0 if self.stage_start_step is None else int(self.stage_start_step)
         self._replay_tick = 0
         self._stage_buffer: dict[str, dict[str, Any]] = {}
         if self.stage_lock is not None:
@@ -227,8 +229,9 @@ class StageCurriculum:
         )
         if self.stage_lock is not None or self.stage_idx >= cap:
             return None
-        if self._stage_start_step == 0 and self._episodes_in_stage == 0:
+        if not self._stage_start_initialized and self._episodes_in_stage == 0:
             self._stage_start_step = global_step
+            self._stage_start_initialized = True
         spent = global_step - self._stage_start_step
         mastered = (
             self._episodes_in_stage >= self.min_episodes
@@ -245,6 +248,7 @@ class StageCurriculum:
         self._stage_buffer.clear()
         self._episodes_in_stage = 0
         self._stage_start_step = global_step
+        self._stage_start_initialized = True
         why = "MASTERED" if mastered else "step budget spent"
         msg = f"[Stage] {old} -> {self.name} ({why}; exit={old_rate * 100:.0f}% @ step {global_step:,})"
         self.save()

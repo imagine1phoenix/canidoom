@@ -363,6 +363,7 @@ def train(cfg_or_path: str | Path | dict[str, Any]) -> dict[str, Any]:
             buffer_capacity=int(plr_sub.get("buffer_size", 128)),
             seed=seed,
             state_path=output_dir / "stage_state.json",
+            stage_start_step=global_step,
         )
         stager.save()
         print(f"[Stage] staged curriculum ON, starting at stage {stager.name}", flush=True)

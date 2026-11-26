@@ -162,3 +162,21 @@ def test_eval_suite_loads_all_entries_including_freedoom2() -> None:
     assert len(specs) == 27
     for s in specs:
         assert Path(s.wad_path).exists(), f"Missing WAD: {s.wad_path}"
+
+
+def test_mapgen_reuses_existing_wad_and_handles_replace_permission_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Replaying a seed reuses existing WADs without replacing open files, and tolerates WinError 5."""
+    wad1, _ = MapGen.sample(tier=3, seed=161_128, scaffolding_alpha=0.25, out_dir=tmp_path)
+    assert wad1.is_file()
+
+    def _deny_replace(self: Path, target: Path | str) -> Path:
+        raise PermissionError("Access is denied")
+
+    monkeypatch.setattr(Path, "replace", _deny_replace)
+    wad2, _ = MapGen.sample(tier=3, seed=161_128, scaffolding_alpha=0.25, out_dir=tmp_path)
+    assert wad2 == wad1
+
+    wad3, _ = MapGen.sample(tier=3, seed=161_129, scaffolding_alpha=0.25, out_dir=tmp_path)
+    assert wad3.is_file() and wad3.stat().st_size >= 12
