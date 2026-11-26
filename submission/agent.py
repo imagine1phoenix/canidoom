@@ -22,8 +22,12 @@ REPO_ROOT = SUBMISSION_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from training.preprocessing import preprocess, OdomGridState, update_action_state
-from training.model import HybridDoomNet, RecurrentState
+try:
+    from submission.preprocessing import preprocess, OdomGridState, update_action_state, ModelInputs
+    from submission.model import HybridDoomNet, RecurrentState
+except ImportError:
+    from .preprocessing import preprocess, OdomGridState, update_action_state, ModelInputs
+    from .model import HybridDoomNet, RecurrentState
 
 WEIGHTS_DIR = SUBMISSION_DIR / "weights"
 DEFAULT_CHECKPOINT_PATH = WEIGHTS_DIR / "best_agent.pt"
@@ -124,7 +128,6 @@ class DoomAgent:
             ent_mask = torch.zeros((1, 32), dtype=torch.bool, device=self.device)
             rgb_depth = torch.zeros((1, 4, 48, 64), dtype=torch.float32, device=self.device)
 
-            from training.preprocessing import ModelInputs
             inputs = ModelInputs(
                 rays=rays_t,
                 ent_feats=ent_feats,
