@@ -1,0 +1,71 @@
+# BC-KL Anchored PPO Fine-Tune from DAgger Best Checkpoint (2,406.13 held-out)
+seed: 42
+curriculum: staged
+stage_start: 4            # All Tiers 1-4 equally mixed (zero-shot random maps)
+stage_max: 4
+stage_lock: 4
+stage_window: 64
+stage_min_episodes: 64
+stage_min_steps: 100000
+stage_max_steps: 10000000
+
+resume_checkpoint: "runs/ppo_from_dagger/best_2521.pt"
+bc_anchor_checkpoint: "runs/bc_dagger/best_dagger.pt"
+bc_kl_beta_init: 0.01
+bc_kl_decay_steps: 1000000
+bc_enabled: true
+
+num_envs: 8
+rollout_steps: 128
+bptt_len: 32
+ppo_epochs: 4
+minibatch_chunks: 8
+gamma: 0.99
+gae_lambda: 0.95
+clip_coef: 0.15
+lr: 1.0e-4
+max_grad_norm: 0.5
+vf_coef: 0.5
+ent_coef: 0.008
+ent_coef_start: 0.008
+ent_coef_end: 0.003
+rnd_coef: 0.03
+grid_novelty_coef: 0.03
+aux_coef: 0.10
+compass_coef: 0.15
+rgb_dropout_p: 0.20
+scaffolding_end_step: 1000000
+total_updates: 5000
+save_interval: 25
+latest_interval: 2
+coach_interval: 10
+output_dir: "runs/ppo_from_dagger"
+best_out: ""              # keep strictly local; promote only after 27-map held-out scoring
+tier_weights: [1.0, 1.0, 1.0, 1.0]
+worker_max_episodes: 100
+worker_timeout_s: 15.0
+render_buffers_ratio: 0.25
+
+cpu_threads: 1
+max_vram_mb: 2048
+max_ram_mb: 8192
+agent_ms_per_step: 40.0
+
+use_llm_coach: true
+wandb_enabled: false
+
+model_config:
+  d_model: 256
+  gru_dim: 256
+  num_slots: 4
+  slot_dim: 8
+  use_rgb: true
+  use_grid: true
+
+plr:
+  buffer_size: 256
+  seed_min: 100000
+  seed_max: 999999
+  replay_prob: 0.45
+  staleness_coef: 0.35
+  temperature: 0.7

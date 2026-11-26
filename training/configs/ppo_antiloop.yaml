@@ -1,0 +1,61 @@
+# Anti-loop / progress run: dense exploration rewards (rewards.py) + low entropy bonus so the
+# 9-button Bernoulli policy can sharpen (diagnosed: entropy stuck ~5.7/6.24, net displacement ~0).
+seed: 7
+num_envs: 12
+rollout_steps: 128
+bptt_len: 32
+ppo_epochs: 4
+minibatch_chunks: 12
+gamma: 0.99
+gae_lambda: 0.95
+clip_coef: 0.2
+lr: 3.0e-4
+max_grad_norm: 0.5
+vf_coef: 0.5
+ent_coef: 0.004
+ent_coef_start: 0.006
+ent_coef_end: 0.001
+rnd_coef: 0.05
+grid_novelty_coef: 0.04
+aux_coef: 0.10
+compass_coef: 0.15
+bc_kl_beta_init: 0.0
+bc_enabled: false
+bc_warmstart_path: null
+rgb_dropout_p: 0.15
+scaffolding_end_step: 3000000
+total_updates: 6000
+save_interval: 25
+latest_interval: 2
+coach_interval: 5
+output_dir: "runs/ppo_antiloop"
+best_out: ""
+tier_weights: [3.0, 2.5, 1.5, 0.5]
+worker_max_episodes: 100
+worker_timeout_s: 15.0
+render_buffers_ratio: 0.25
+
+cpu_threads: 1
+max_vram_mb: 2048
+max_ram_mb: 8192
+agent_ms_per_step: 40.0
+
+use_llm_coach: true
+wandb_project: "devforge-doom"
+wandb_enabled: false
+
+model_config:
+  d_model: 256
+  gru_dim: 256
+  num_slots: 4
+  slot_dim: 8
+  use_rgb: true
+  use_grid: true
+
+plr:
+  buffer_size: 256
+  seed_min: 100000
+  seed_max: 999999
+  replay_prob: 0.5
+  staleness_coef: 0.1
+  temperature: 0.1

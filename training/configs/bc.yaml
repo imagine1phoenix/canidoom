@@ -1,0 +1,28 @@
+# training/configs/bc.yaml
+# Optional / synthetic-compatible Behavior Cloning warmstart config (never required)
+seed: 42
+optional: true
+allow_synthetic: true
+demo_dir: "data/demos"
+output_checkpoint: "runs/bc/bc_warmstart.pt"
+seq_len: 32
+batch_seqs: 16
+epochs: 30
+lr: 3.0e-4
+weight_decay: 1.0e-4
+max_grad_norm: 0.5
+pos_weight_use: 2.5
+pos_weight_attack: 2.5
+rgb_dropout_p: 0.15
+val_split: 0.10
+device: "auto"
+wandb_project: "devforge-doom"
+wandb_enabled: false
+
+model_config:
+  d_model: 256
+  gru_dim: 256
+  num_slots: 4
+  slot_dim: 8
+  use_rgb: true
+  use_grid: true

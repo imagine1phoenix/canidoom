@@ -1,0 +1,68 @@
+# Staged easy->hard curriculum (single map -> easy -> medium -> hard -> random).
+seed: 42
+curriculum: staged
+stage_start: 0            # 0 single_map, 1 easy, 2 medium, 3 hard, 4 random
+stage_max: 4              # highest stage index reachable (0..4)
+stage_lock: null          # set an int to pin a single stage
+stage_window: 40
+stage_min_episodes: 32
+stage_min_steps: 16384
+stage_max_steps: 400000
+
+num_envs: 8
+rollout_steps: 128
+bptt_len: 32
+ppo_epochs: 4
+minibatch_chunks: 8
+gamma: 0.99
+gae_lambda: 0.95
+clip_coef: 0.2
+lr: 3.0e-4
+max_grad_norm: 0.5
+vf_coef: 0.5
+ent_coef: 0.015
+ent_coef_start: 0.02
+ent_coef_end: 0.005
+rnd_coef: 0.05
+grid_novelty_coef: 0.03
+aux_coef: 0.10
+compass_coef: 0.15
+bc_kl_beta_init: 0.0
+bc_enabled: false
+bc_warmstart_path: null
+rgb_dropout_p: 0.25
+scaffolding_end_step: 12000000
+total_updates: 5000
+save_interval: 25
+latest_interval: 2
+coach_interval: 25
+output_dir: "runs/staged_main"
+best_out: ""              # never auto-overwrite submission/weights; promote by hand after held-out scoring
+tier_weights: [1.0, 1.0, 1.0, 1.0]
+worker_max_episodes: 100
+worker_timeout_s: 15.0
+render_buffers_ratio: 0.25
+
+cpu_threads: 1
+max_vram_mb: 2048
+max_ram_mb: 8192
+agent_ms_per_step: 40.0
+
+use_llm_coach: true
+wandb_enabled: false
+
+model_config:
+  d_model: 256
+  gru_dim: 256
+  num_slots: 4
+  slot_dim: 8
+  use_rgb: true
+  use_grid: true
+
+plr:
+  buffer_size: 256
+  seed_min: 100000
+  seed_max: 999999
+  replay_prob: 0.5
+  staleness_coef: 0.35
+  temperature: 0.7
