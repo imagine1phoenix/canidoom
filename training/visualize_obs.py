@@ -1,18 +1,18 @@
-"""Live 4-panel DOOM + 3D Raycast Wall Projection + Neural Grid + Analytics Dashboard (pygame).
+"""Live DOOM Spectator + Neural Telemetry Command Center (pygame).
+
+Layout:
+- Left: Large First-Person Game Viewport (720x540, 4:3) + Action Pills + Vitals Gauges + 3D Wireframe Sensor
+- Right (Data Console Beside Game):
+    - Top-Left: 360deg Polar Radar + 8-Sector Value Compass
+    - Top-Right: 32x32 Egocentric Neural Occupancy Grid
+    - Bottom-Left: 9-Action Policy Confidence Bars & Action Masking
+    - Bottom-Right: Live Telemetry Analytics (Critic V(s), Ep Return, Policy Entropy, Ray Breakdown, Latency)
 
 Supports TWO modes:
-1. Live Agent Spectator (recommended while training!):
-     python -m training.visualize_obs --checkpoint runs/ppo_flagship/checkpoints/latest.pt --watch --random-maps
-   Renders 4 panels side-by-side:
-     - Panel 1: First-person RGB view + Action pills + Hit Legend
-     - Panel 2: Pseudo-3D Wireframe Raycast Wall Projection ("wall view") + 360deg Radar & Value Compass
-     - Panel 3: 32x32 Egocentric Occupancy Grid + Live 9-Action Probability Bars
-     - Panel 4: Live Analytics Screen (Critic V(s), Ep Return, Entropy sparklines + Ray composition + Latency)
-   Automatically hot-reloads new weights whenever the checkpoint updates!
-
+1. Live Agent Spectator:
+     python -m training.visualize_obs --checkpoint submission/weights/best_agent.pt --watch --random-maps
 2. Manual Keyboard Mode (no --checkpoint):
      python -m training.visualize_obs --tier 3 --seed 1001
-   Controls: W/S (fwd/back), A/D (strafe), Left/Right (turn), Space/F (shoot), E (use), R (new random map), Q/Esc (quit).
 """
 
 from __future__ import annotations
@@ -46,14 +46,26 @@ from training.odometry_grid import (  # noqa: E402
 )
 from training.rewards import RewardShaper  # noqa: E402
 
+# Color Palette
+CLR_BG = (10, 12, 17)
+CLR_PANEL_BG = (17, 21, 30)
+CLR_PANEL_HEADER = (23, 29, 42)
+CLR_PANEL_BORDER = (38, 46, 64)
+CLR_TEXT_PRIMARY = (230, 236, 245)
+CLR_TEXT_MUTED = (140, 150, 170)
+CLR_ACCENT_CYAN = (0, 215, 235)
+CLR_ACCENT_GREEN = (45, 225, 115)
+CLR_ACCENT_GOLD = (255, 195, 45)
+CLR_ACCENT_RED = (255, 70, 70)
+
 # Hit-type colors matching the live debug palette (RGB for pygame)
 HIT_COLORS = {
-    0: (35, 38, 46),       # none
-    1: (220, 224, 234),    # wall (white/gray)
-    2: (60, 165, 255),     # door (cyan/blue)
-    3: (255, 200, 40),     # locked door (gold)
-    4: (255, 65, 65),      # enemy (red)
-    5: (60, 235, 115),     # item (green)
+    0: (35, 40, 52),       # none
+    1: (220, 226, 238),    # wall (white/gray)
+    2: (60, 170, 255),     # door (cyan/blue)
+    3: (255, 205, 45),     # locked door (gold)
+    4: (255, 70, 70),      # enemy (red)
+    5: (50, 235, 115),     # item (green)
 }
 
 HIT_NAMES = {0: "None", 1: "Wall", 2: "Door", 3: "Locked", 4: "Enemy", 5: "Item"}
@@ -84,161 +96,227 @@ def _read_keyboard_action() -> np.ndarray:
     return act
 
 
-def _draw_left_panel(
+def _draw_card(screen: pygame.Surface, x: int, y: int, w: int, h: int, title: str, font: pygame.font.Font, title_color: tuple[int, int, int] = CLR_ACCENT_CYAN) -> tuple[int, int, int, int]:
+    """Draw a styled dark cyberpunk card with header bar and return content rect (cx, cy, cw, ch)."""
+    pygame.draw.rect(screen, CLR_PANEL_BG, (x, y, w, h), border_radius=6)
+    pygame.draw.rect(screen, CLR_PANEL_BORDER, (x, y, w, h), 1, border_radius=6)
+    
+    # Header strip
+    header_h = 28
+    pygame.draw.rect(screen, CLR_PANEL_HEADER, (x + 1, y + 1, w - 2, header_h), border_top_left_radius=5, border_top_right_radius=5)
+    pygame.draw.line(screen, CLR_PANEL_BORDER, (x, y + header_h), (x + w, y + header_h), 1)
+    
+    # Accent indicator dot
+    pygame.draw.circle(screen, title_color, (x + 14, y + header_h // 2), 4)
+    txt = font.render(title, True, CLR_TEXT_PRIMARY)
+    screen.blit(txt, (x + 24, y + (header_h - txt.get_height()) // 2))
+    
+    return x + 10, y + header_h + 8, w - 20, h - header_h - 16
+
+
+def _draw_game_stage(
     screen: pygame.Surface,
     obs: dict[str, Any],
     act: np.ndarray,
+    hud_meta: dict[str, Any],
     font: pygame.font.Font,
     small_font: pygame.font.Font,
+    bold_font: pygame.font.Font,
+    x: int,
+    y: int,
     w: int,
     h: int,
 ) -> None:
-    rgb_h = h - 72
+    """Draw the primary game viewport with status header, action pills, wireframe strip, and vitals."""
+    # Top banner bar
+    banner_h = 32
+    pygame.draw.rect(screen, (14, 18, 26), (x, y, w, banner_h), border_radius=4)
+    pygame.draw.rect(screen, CLR_PANEL_BORDER, (x, y, w, banner_h), 1, border_radius=4)
+    
+    # Mode pill
+    mode_str = hud_meta.get("mode", "AGENT LIVE")
+    mode_col = CLR_ACCENT_GREEN if "AGENT" in mode_str else CLR_ACCENT_GOLD
+    pygame.draw.rect(screen, mode_col, (x + 8, y + 5, 96, 22), border_radius=3)
+    mode_txt = small_font.render(mode_str, True, (10, 18, 12))
+    screen.blit(mode_txt, (x + 8 + (96 - mode_txt.get_width()) // 2, y + 9))
+    
+    map_txt = font.render(f"MAP: {hud_meta.get('map_label', 'MAP01')}", True, CLR_TEXT_PRIMARY)
+    screen.blit(map_txt, (x + 116, y + 7))
+    
+    ckpt_txt = small_font.render(f"Ckpt: {hud_meta.get('ckpt_step', 0):,} stp (u{hud_meta.get('ckpt_upd', 0)})", True, CLR_TEXT_MUTED)
+    screen.blit(ckpt_txt, (x + 280, y + 9))
+    
+    perf_txt = small_font.render(f"Act: {hud_meta.get('act_ms', 0.0):.2f} ms | Ep #{hud_meta.get('episode', 1)} Stp {hud_meta.get('ep_step', 0)}", True, CLR_ACCENT_CYAN)
+    screen.blit(perf_txt, (x + w - perf_txt.get_width() - 10, y + 9))
+
+    # Main First-Person Game Viewport (720x540)
+    vp_x = x
+    vp_y = y + banner_h + 8
+    vp_w = w
+    vp_h = 524
+    
     rgb_surf = pygame.surfarray.make_surface(np.transpose(obs["rgb"], (1, 0, 2)))
-    rgb_scaled = pygame.transform.scale(rgb_surf, (w, rgb_h))
-    screen.blit(rgb_scaled, (0, 0))
+    rgb_scaled = pygame.transform.scale(rgb_surf, (vp_w, vp_h))
+    screen.blit(rgb_scaled, (vp_x, vp_y))
+    pygame.draw.rect(screen, CLR_PANEL_BORDER, (vp_x, vp_y, vp_w, vp_h), 1)
 
-    # Subtle reticle on viewport
-    cx, cy = w // 2, rgb_h // 2
-    pygame.draw.line(screen, (0, 255, 140), (cx - 8, cy), (cx + 8, cy), 1)
-    pygame.draw.line(screen, (0, 255, 140), (cx, cy - 8), (cx, cy + 8), 1)
+    # Crosshair reticle
+    cx, cy = vp_x + vp_w // 2, vp_y + vp_h // 2
+    pygame.draw.line(screen, (0, 255, 140), (cx - 10, cy), (cx + 10, cy), 1)
+    pygame.draw.line(screen, (0, 255, 140), (cx, cy - 10), (cx, cy + 10), 1)
+    pygame.draw.circle(screen, (0, 255, 140), (cx, cy), 2)
 
-    # Bottom HUD bar with action pills & color legend
-    pygame.draw.rect(screen, (14, 16, 22), (0, rgb_h, w, 72))
-    pygame.draw.line(screen, (45, 52, 70), (0, rgb_h), (w, rgb_h), 1)
+    # Bottom Dashboard Deck (Under Game Viewport)
+    deck_y = vp_y + vp_h + 8
+    deck_h = h - (deck_y - y)
+    pygame.draw.rect(screen, CLR_PANEL_BG, (x, deck_y, w, deck_h), border_radius=6)
+    pygame.draw.rect(screen, CLR_PANEL_BORDER, (x, deck_y, w, deck_h), 1, border_radius=6)
 
-    ax = 10
-    ay = rgb_h + 8
+    # Left Section of Deck: Action Pills & Hit Legend
+    deck_left_w = 340
+    pills_y = deck_y + 12
+    screen.blit(bold_font.render("ACTIVE ACTIONS:", True, CLR_TEXT_MUTED), (x + 12, pills_y))
+    
+    ax = x + 12
+    ay = pills_y + 22
     for i, lbl in enumerate(ACT_LABELS):
         active = int(act[i]) == 1
-        bg = (45, 200, 105) if active else (36, 40, 52)
-        fg = (10, 15, 10) if active else (140, 148, 165)
-        bw = 42
+        bg = CLR_ACCENT_GREEN if active else (28, 34, 46)
+        fg = (10, 20, 12) if active else (130, 140, 160)
+        bw = 34
         pygame.draw.rect(screen, bg, (ax, ay, bw, 22), border_radius=3)
-        screen.blit(small_font.render(lbl, True, fg), (ax + 6, ay + 4))
-        ax += bw + 4
+        lbl_surf = small_font.render(lbl, True, fg)
+        screen.blit(lbl_surf, (ax + (bw - lbl_surf.get_width()) // 2, ay + 4))
+        ax += bw + 3
 
-    # Color legend row
-    lx = 10
-    ly = rgb_h + 42
+    # Color Legend Row
+    lx = x + 12
+    ly = ay + 30
+    screen.blit(small_font.render("Hit:", True, CLR_TEXT_MUTED), (lx, ly))
+    lx += 32
     for ht in (1, 2, 3, 4, 5):
         col = HIT_COLORS[ht]
-        pygame.draw.rect(screen, col, (lx, ly + 2, 10, 10))
-        txt = small_font.render(HIT_NAMES[ht], True, (190, 198, 215))
-        screen.blit(txt, (lx + 14, ly))
-        lx += 20 + txt.get_width() + 10
+        pygame.draw.rect(screen, col, (lx, ly + 2, 9, 9), border_radius=2)
+        txt = small_font.render(HIT_NAMES[ht], True, CLR_TEXT_PRIMARY)
+        screen.blit(txt, (lx + 12, ly))
+        lx += 14 + txt.get_width() + 6
+
+    # 3D Wireframe Raycast Preview Strip (Miniaturized Sensor Sight)
+    wf_x = x + 12
+    header_txt = small_font.render("3D Raycast Depth Sight", True, CLR_TEXT_MUTED)
+    screen.blit(header_txt, (wf_x, ly + 20))
+    wf_y = ly + 35
+    wf_w = deck_left_w - 24
+    wf_h = deck_h - (wf_y - deck_y) - 10
+    pygame.draw.rect(screen, (10, 12, 18), (wf_x, wf_y, wf_w, wf_h), border_radius=3)
+    pygame.draw.rect(screen, (34, 40, 56), (wf_x, wf_y, wf_w, wf_h), 1, border_radius=3)
+
+    rays_dist = obs["rays"]["distance"]
+    rays_type = obs["rays"]["hit_type"]
+    fov_indices = list(range(8, -1, -1)) + list(range(63, 55, -1))
+    col_w = wf_w / float(len(fov_indices))
+    mid_wf_y = wf_y + wf_h // 2
+    for ci, r_idx in enumerate(fov_indices):
+        d = float(rays_dist[r_idx])
+        ht = int(rays_type[r_idx])
+        wall_h = int(min(wf_h - 4, (wf_h - 4) * (0.16 / max(0.06, d))))
+        shade = max(0.3, min(1.0, 1.05 - 0.78 * d))
+        col = tuple(int(c * shade) for c in HIT_COLORS.get(ht, (180, 180, 180)))
+        rx = int(wf_x + ci * col_w)
+        if ht != 0:
+            pygame.draw.rect(screen, col, (rx, mid_wf_y - wall_h // 2, max(2, int(col_w)), max(2, wall_h)))
+
+    # Divider Line between Left & Right Deck
+    pygame.draw.line(screen, CLR_PANEL_BORDER, (x + deck_left_w + 6, deck_y + 10), (x + deck_left_w + 6, deck_y + deck_h - 10), 1)
+
+    # Right Section of Deck: High-Visibility Player Vitals & Mission Status
+    vx0 = x + deck_left_w + 20
+    vw = w - (deck_left_w + 32)
+    v = obs["vitals"]
+    
+    # Row 1: Vitals Gauges (Health, Armor, Ammo)
+    hp = float(v[0])
+    armor = float(v[1])
+    ammo = float(v[3])
+    
+    vy = deck_y + 12
+    # Health bar
+    hp_col = CLR_ACCENT_GREEN if hp > 50 else (CLR_ACCENT_GOLD if hp > 25 else CLR_ACCENT_RED)
+    screen.blit(bold_font.render(f"HEALTH: {hp:3.0f}%", True, hp_col), (vx0, vy))
+    pygame.draw.rect(screen, (30, 36, 48), (vx0, vy + 20, 170, 12), border_radius=2)
+    pygame.draw.rect(screen, hp_col, (vx0, vy + 20, int(170 * max(0.0, min(1.0, hp / 100.0))), 12), border_radius=2)
+
+    # Armor bar
+    screen.blit(bold_font.render(f"ARMOR: {armor:3.0f}%", True, CLR_ACCENT_CYAN), (vx0 + 190, vy))
+    pygame.draw.rect(screen, (30, 36, 48), (vx0 + 190, vy + 20, 160, 12), border_radius=2)
+    pygame.draw.rect(screen, CLR_ACCENT_CYAN, (vx0 + 190, vy + 20, int(160 * max(0.0, min(1.0, armor / 100.0))), 12), border_radius=2)
+
+    # Ammo bar
+    vy += 42
+    screen.blit(bold_font.render(f"AMMO: {ammo:3.0f}", True, CLR_ACCENT_GOLD), (vx0, vy))
+    pygame.draw.rect(screen, (30, 36, 48), (vx0, vy + 20, 170, 12), border_radius=2)
+    pygame.draw.rect(screen, CLR_ACCENT_GOLD, (vx0, vy + 20, int(170 * max(0.0, min(1.0, ammo / 50.0))), 12), border_radius=2)
+
+    # Keycards Inventory Display
+    screen.blit(bold_font.render("KEYCARDS:", True, CLR_TEXT_PRIMARY), (vx0 + 190, vy))
+    has_blue = int(v[8]) > 0
+    has_red = int(v[9]) > 0
+    has_yellow = int(v[10]) > 0
+    
+    kx = vx0 + 190
+    ky = vy + 20
+    for key_name, has_k, col in (("BLUE", has_blue, (60, 150, 255)), ("RED", has_red, (255, 60, 60)), ("YELLOW", has_yellow, (255, 210, 40))):
+        k_bg = col if has_k else (32, 38, 50)
+        k_fg = (10, 15, 20) if has_k else (100, 110, 130)
+        pygame.draw.rect(screen, k_bg, (kx, ky, 50, 16), border_radius=3)
+        ktxt = small_font.render(key_name, True, k_fg)
+        screen.blit(ktxt, (kx + (50 - ktxt.get_width()) // 2, ky + 1))
+        kx += 55
+
+    # Mission Telemetry Summary Pills
+    vy += 42
+    stats_box = (
+        (f"KILLS: {hud_meta.get('kills', 0)}", CLR_ACCENT_RED),
+        (f"EXITS: {hud_meta.get('exits', 0)}", CLR_ACCENT_GREEN),
+        (f"STEPS: {hud_meta.get('ep_step', 0)}", CLR_TEXT_PRIMARY),
+    )
+    sx = vx0
+    for s_title, s_col in stats_box:
+        pygame.draw.rect(screen, (24, 30, 42), (sx, vy, 110, 24), border_radius=3)
+        pygame.draw.rect(screen, CLR_PANEL_BORDER, (sx, vy, 110, 24), 1, border_radius=3)
+        stxt = bold_font.render(s_title, True, s_col)
+        screen.blit(stxt, (sx + (110 - stxt.get_width()) // 2, vy + 4))
+        sx += 120
 
 
-def _draw_mid_panel(
+def _draw_radar_panel(
     screen: pygame.Surface,
     obs: dict[str, Any],
     compass: Optional[np.ndarray],
     font: pygame.font.Font,
     small_font: pygame.font.Font,
-    x0: int,
+    x: int,
+    y: int,
     w: int,
     h: int,
 ) -> None:
-    pygame.draw.rect(screen, (14, 16, 22), (x0, 0, w, h))
+    """Card 1: 360deg Polar Radar + 8-Sector Value Compass."""
+    cx0, cy0, cw, ch = _draw_card(screen, x, y, w, h, "360° Radar & Value Compass", font, CLR_ACCENT_GOLD)
 
-    # 1. Top half: Pseudo-3D Wireframe Raycast Wall Projection ("wall view") + entities
-    fov_h = h // 2
-    vx, vy, vw, vh = x0 + 8, 8, w - 16, fov_h - 14
-    pygame.draw.rect(screen, (10, 12, 18), (vx, vy, vw, vh))
+    radar_cx = cx0 + cw // 2
+    radar_cy = cy0 + ch // 2 + 6
+    radius = min(cw // 2 - 14, ch // 2 - 14)
 
-    mid_y = vy + vh // 2
-    max_wall_h = vh - 18
+    # Concentric distance rings
+    pygame.draw.circle(screen, (28, 34, 48), (radar_cx, radar_cy), radius, 1)
+    pygame.draw.circle(screen, (24, 28, 40), (radar_cx, radar_cy), int(radius * 0.66), 1)
+    pygame.draw.circle(screen, (20, 24, 34), (radar_cx, radar_cy), int(radius * 0.33), 1)
 
-    # Perspective ceiling/floor shading + depth reference bands
-    pygame.draw.rect(screen, (15, 18, 26), (vx, vy, vw, vh // 2))
-    pygame.draw.rect(screen, (22, 24, 32), (vx, mid_y, vw, vh - vh // 2))
-    for d_ref in (0.25, 0.5, 0.75):
-        ref_half = int(min(max_wall_h // 2, (max_wall_h // 2) * (0.14 / d_ref)))
-        pygame.draw.line(screen, (32, 36, 48), (vx, mid_y - ref_half), (vx + vw, mid_y - ref_half), 1)
-        pygame.draw.line(screen, (32, 36, 48), (vx, mid_y + ref_half), (vx + vw, mid_y + ref_half), 1)
-    # Perspective diagonal floor/ceiling grid rays
-    for frac in (-0.45, -0.22, 0.22, 0.45):
-        ex = int(vx + vw * (0.5 + frac))
-        pygame.draw.line(screen, (28, 32, 42), (vx + vw // 2, mid_y), (ex, vy), 1)
-        pygame.draw.line(screen, (28, 32, 42), (vx + vw // 2, mid_y), (ex, vy + vh), 1)
+    # Cross axis
+    pygame.draw.line(screen, (28, 34, 48), (radar_cx - radius, radar_cy), (radar_cx + radius, radar_cy), 1)
+    pygame.draw.line(screen, (28, 34, 48), (radar_cx, radar_cy - radius), (radar_cx, radar_cy + radius), 1)
 
-    rays_dist = obs["rays"]["distance"]
-    rays_type = obs["rays"]["hit_type"]
-    # Front ~95 deg arc: indices 8..0 (left->center), 63..56 (center->right)
-    fov_indices = list(range(8, -1, -1)) + list(range(63, 55, -1))
-    n_cols = len(fov_indices)
-    col_w = vw / float(n_cols)
-
-    top_pts: list[tuple[int, int]] = []
-    bot_pts: list[tuple[int, int]] = []
-    prev_d: Optional[float] = None
-    prev_ht: Optional[int] = None
-
-    for ci, r_idx in enumerate(fov_indices):
-        d = float(rays_dist[r_idx])
-        ht = int(rays_type[r_idx])
-        color = HIT_COLORS.get(ht, (200, 200, 200))
-        wall_h = int(min(max_wall_h, max_wall_h * (0.16 / max(0.055, d))))
-        shade = max(0.22, min(1.0, 1.05 - 0.78 * d))
-        shaded = tuple(int(c * shade) for c in color)
-
-        x_left = int(vx + ci * col_w)
-        x_right = int(vx + (ci + 1) * col_w)
-        y_top = mid_y - wall_h // 2
-        y_bot = mid_y + wall_h // 2
-
-        if ht != 0:
-            pygame.draw.rect(screen, shaded, (x_left, y_top, max(2, x_right - x_left), max(2, wall_h)))
-            # Bright floor/ceiling edge cap on wall strip
-            edge_col = tuple(min(255, int(c * 1.15)) for c in shaded)
-            pygame.draw.line(screen, edge_col, (x_left, y_top), (x_right, y_top), 2)
-            pygame.draw.line(screen, edge_col, (x_left, y_bot), (x_right, y_bot), 2)
-
-        # Draw crisp vertical wall corner edges at depth discontinuities or material switches
-        if prev_d is not None and (abs(d - prev_d) > 0.08 or ht != prev_ht):
-            corner_col = (240, 245, 255) if ht in (1, 2, 3) or prev_ht in (1, 2, 3) else (150, 160, 180)
-            pygame.draw.line(screen, corner_col, (x_left, min(y_top, top_pts[-1][1])), (x_left, max(y_bot, bot_pts[-1][1])), 1)
-
-        top_pts.append((x_left + max(1, (x_right - x_left) // 2), y_top))
-        bot_pts.append((x_left + max(1, (x_right - x_left) // 2), y_bot))
-        prev_d, prev_ht = d, ht
-
-    if len(top_pts) >= 2:
-        pygame.draw.lines(screen, (200, 210, 225), False, top_pts, 1)
-        pygame.draw.lines(screen, (170, 180, 200), False, bot_pts, 1)
-
-    # Visible entities bounding boxes + distance label
-    ent_feats = obs["visible_entities"]["features"]
-    ent_types = obs["visible_entities"]["entity_type"]
-    ent_mask = obs["visible_entities"]["mask"]
-    for i in range(len(ent_mask)):
-        if not ent_mask[i]:
-            continue
-        dist_norm, sin_a, cos_a, _, _ = ent_feats[i]
-        rel_angle = math.atan2(sin_a, cos_a)
-        if abs(rel_angle) <= math.radians(48):
-            frac_x = 0.5 - (rel_angle / math.radians(90))
-            ex = int(vx + frac_x * vw)
-            box_sz = int(min(max_wall_h * 0.72, max(12, 24 / max(0.08, dist_norm))))
-            etype = int(ent_types[i])
-            ecolor = (255, 65, 65) if etype in (1, 2, 3, 4) else (60, 235, 115)
-            pygame.draw.rect(screen, ecolor, (ex - box_sz // 2, mid_y - box_sz // 2, box_sz, box_sz), 2)
-            lbl = small_font.render(f"{dist_norm:.2f}", True, ecolor)
-            screen.blit(lbl, (ex - lbl.get_width() // 2, mid_y - box_sz // 2 - 13))
-
-    pygame.draw.rect(screen, (55, 62, 82), (vx, vy, vw, vh), 1)
-    title_surf = font.render("3D Wall Projection + Entities", True, (210, 220, 235))
-    pygame.draw.rect(screen, (14, 16, 23), (vx + 4, vy + 2, title_surf.get_width() + 8, title_surf.get_height() + 4), border_radius=3)
-    screen.blit(title_surf, (vx + 8, vy + 4))
-
-    # 2. Bottom half: 360deg Radar + 8-Sector Value Compass overlay
-    cx = x0 + w // 2
-    cy = fov_h + (h - fov_h) // 2 + 4
-    radius = min(w // 2 - 20, (h - fov_h) // 2 - 18)
-    pygame.draw.circle(screen, (32, 36, 48), (cx, cy), radius, 1)
-    pygame.draw.circle(screen, (28, 32, 42), (cx, cy), radius // 2, 1)
-
-    # 8-Sector Value Compass ("plus point" directional prediction)
+    # 8-Sector Value Compass ("plus-point" directional advantage)
     if compass is not None and len(compass) == 8:
         c_pos = np.maximum(0.0, compass)
         c_max = float(np.max(c_pos))
@@ -251,101 +329,39 @@ def _draw_mid_panel(
                 ang_center = sec * (math.pi / 4.0)
                 a0 = ang_center - math.pi / 8.0
                 a1 = ang_center + math.pi / 8.0
-                r_sec = int(radius * (0.28 + 0.68 * val_n))
+                r_sec = int(radius * (0.25 + 0.72 * val_n))
                 pts = [
-                    (cx, cy),
-                    (cx - int(math.sin(a0) * r_sec), cy - int(math.cos(a0) * r_sec)),
-                    (cx - int(math.sin(ang_center) * r_sec), cy - int(math.cos(ang_center) * r_sec)),
-                    (cx - int(math.sin(a1) * r_sec), cy - int(math.cos(a1) * r_sec)),
+                    (radar_cx, radar_cy),
+                    (radar_cx - int(math.sin(a0) * r_sec), radar_cy - int(math.cos(a0) * r_sec)),
+                    (radar_cx - int(math.sin(ang_center) * r_sec), radar_cy - int(math.cos(ang_center) * r_sec)),
+                    (radar_cx - int(math.sin(a1) * r_sec), radar_cy - int(math.cos(a1) * r_sec)),
                 ]
-                pygame.draw.polygon(screen, (95, 72, 22), pts)
-                pygame.draw.polygon(screen, (255, 195, 50), pts, 1)
+                pygame.draw.polygon(screen, (100, 75, 20), pts)
+                pygame.draw.polygon(screen, CLR_ACCENT_GOLD, pts, 1)
 
+    # 64 Radar depth rays
+    rays_dist = obs["rays"]["distance"]
+    rays_type = obs["rays"]["hit_type"]
     for i in range(64):
         d = float(rays_dist[i])
         ht = int(rays_type[i])
         theta = (i / 64.0) * 2.0 * math.pi
-        px = cx - int(math.sin(theta) * d * radius)
-        py = cy - int(math.cos(theta) * d * radius)
+        px = radar_cx - int(math.sin(theta) * d * radius)
+        py = radar_cy - int(math.cos(theta) * d * radius)
         col = HIT_COLORS.get(ht, (180, 180, 180))
-        pygame.draw.line(screen, (col[0] // 3, col[1] // 3, col[2] // 3), (cx, cy), (px, py), 1)
+        pygame.draw.line(screen, (col[0] // 3, col[1] // 3, col[2] // 3), (radar_cx, radar_cy), (px, py), 1)
         if ht != 0:
             pygame.draw.circle(screen, col, (px, py), 3)
 
-    pygame.draw.circle(screen, (255, 255, 0), (cx, cy), 4)
-    screen.blit(font.render("360deg Radar + Value Compass", True, (200, 210, 225)), (x0 + 12, fov_h + 6))
+    # Center agent marker
+    pygame.draw.circle(screen, (255, 255, 0), (radar_cx, radar_cy), 4)
+    # Forward heading arrow
+    pygame.draw.line(screen, (255, 255, 0), (radar_cx, radar_cy), (radar_cx, radar_cy - 12), 2)
 
 
-def _draw_grid_panel(
+def _draw_neural_grid_panel(
     screen: pygame.Surface,
-    obs: dict[str, Any],
-    act: np.ndarray,
-    probs: Optional[np.ndarray],
-    action_mask: Optional[np.ndarray],
     grid: Optional[np.ndarray],
-    font: pygame.font.Font,
-    small_font: pygame.font.Font,
-    x0: int,
-    w: int,
-    h: int,
-) -> None:
-    pygame.draw.rect(screen, (18, 20, 28), (x0, 0, w, h))
-    pygame.draw.line(screen, (40, 46, 62), (x0, 0), (x0, h), 1)
-
-    # Top: 32x32 Egocentric Occupancy Grid
-    grid_box = min(w - 28, h // 2 - 22)
-    gx0 = x0 + (w - grid_box) // 2
-    gy0 = 26
-    if grid is not None and grid.shape == (6, 32, 32):
-        comp = np.zeros((32, 32, 3), dtype=np.float32)
-        comp[:, :, 2] += grid[CH_VISITED] * 0.45      # blue visited
-        comp[:, :, :] += grid[CH_WALL][..., None] * 0.68
-        comp[:, :, 0] += grid[CH_DOOR] * 0.90
-        comp[:, :, 1] += grid[CH_DOOR] * 0.90
-        comp[:, :, 0] += grid[CH_LOCKED_DOOR] * 1.00
-        comp[:, :, 1] += grid[CH_ITEM] * 0.85
-        comp[:, :, 2] += grid[CH_ITEM] * 0.90
-        comp[:, :, 1] += grid[CH_ENEMY] * 1.00
-        img_u8 = (np.clip(comp, 0.0, 1.0) * 255.0).astype(np.uint8)
-        surf = pygame.surfarray.make_surface(np.transpose(img_u8, (1, 0, 2)))
-        scaled = pygame.transform.scale(surf, (grid_box, grid_box))
-        screen.blit(scaled, (gx0, gy0))
-        pygame.draw.rect(screen, (60, 70, 90), (gx0, gy0, grid_box, grid_box), 1)
-        pcx, pcy = gx0 + grid_box // 2, gy0 + grid_box // 2
-        pygame.draw.circle(screen, (255, 255, 0), (pcx, pcy), 4)
-        pygame.draw.line(screen, (255, 255, 0), (pcx, pcy), (pcx, pcy - 11), 2)
-    else:
-        pygame.draw.rect(screen, (26, 28, 36), (gx0, gy0, grid_box, grid_box))
-
-    screen.blit(font.render("32x32 Egocentric Neural Grid", True, (200, 210, 225)), (x0 + 12, 6))
-
-    # Bottom: Policy Action Confidence Bars (9 Bernoulli outputs)
-    by = gy0 + grid_box + 14
-    screen.blit(font.render("Action Policy Probabilities", True, (200, 210, 225)), (x0 + 12, by))
-    by += 22
-    bar_x = x0 + 54
-    bar_w = w - 108
-    for i, lbl in enumerate(ACT_LABELS):
-        p = float(probs[i]) if (probs is not None and i < len(probs)) else float(act[i])
-        allowed = bool(action_mask[i]) if (action_mask is not None and i < len(action_mask)) else True
-        fired = int(act[i]) == 1
-
-        screen.blit(small_font.render(lbl, True, (210, 215, 225) if allowed else (120, 90, 90)), (x0 + 12, by))
-        pygame.draw.rect(screen, (32, 36, 48), (bar_x, by + 2, bar_w, 12), border_radius=2)
-        fill_w = int(bar_w * max(0.0, min(1.0, p)))
-        fill_col = (55, 215, 115) if fired else ((75, 145, 235) if allowed else (120, 55, 55))
-        if fill_w > 0:
-            pygame.draw.rect(screen, fill_col, (bar_x, by + 2, fill_w, 12), border_radius=2)
-        pct_str = "MASK" if not allowed else f"{int(round(p * 100)):3d}%"
-        screen.blit(small_font.render(pct_str, True, (185, 195, 210)), (bar_x + bar_w + 6, by))
-        by += 21
-
-
-def _draw_sparkline(
-    screen: pygame.Surface,
-    vals: deque[float],
-    title: str,
-    color: tuple[int, int, int],
     font: pygame.font.Font,
     small_font: pygame.font.Font,
     x: int,
@@ -353,16 +369,104 @@ def _draw_sparkline(
     w: int,
     h: int,
 ) -> None:
-    pygame.draw.rect(screen, (22, 25, 34), (x, y, w, h), border_radius=4)
-    pygame.draw.rect(screen, (48, 54, 72), (x, y, w, h), 1, border_radius=4)
+    """Card 2: 32x32 Egocentric Neural Occupancy Grid."""
+    cx0, cy0, cw, ch = _draw_card(screen, x, y, w, h, "32×32 Egocentric Neural Grid", font, CLR_ACCENT_CYAN)
+
+    grid_box = min(cw - 10, ch - 26)
+    gx0 = cx0 + (cw - grid_box) // 2
+    gy0 = cy0 + (ch - grid_box) // 2 - 4
+
+    if grid is not None and grid.shape == (6, 32, 32):
+        comp = np.zeros((32, 32, 3), dtype=np.float32)
+        comp[:, :, 2] += grid[CH_VISITED] * 0.50      # blue visited floor
+        comp[:, :, :] += grid[CH_WALL][..., None] * 0.70  # white walls
+        comp[:, :, 0] += grid[CH_DOOR] * 0.90
+        comp[:, :, 1] += grid[CH_DOOR] * 0.90         # yellow unlocked door
+        comp[:, :, 0] += grid[CH_LOCKED_DOOR] * 1.00  # red locked door
+        comp[:, :, 1] += grid[CH_ITEM] * 0.85
+        comp[:, :, 2] += grid[CH_ITEM] * 0.90         # cyan item
+        comp[:, :, 0] += grid[CH_ENEMY] * 1.00        # red enemy
+        comp[:, :, 1] += grid[CH_ENEMY] * 0.20
+        img_u8 = (np.clip(comp, 0.0, 1.0) * 255.0).astype(np.uint8)
+        surf = pygame.surfarray.make_surface(np.transpose(img_u8, (1, 0, 2)))
+        scaled = pygame.transform.scale(surf, (grid_box, grid_box))
+        screen.blit(scaled, (gx0, gy0))
+        pygame.draw.rect(screen, CLR_PANEL_BORDER, (gx0, gy0, grid_box, grid_box), 1)
+
+        # Agent position & heading
+        pcx, pcy = gx0 + grid_box // 2, gy0 + grid_box // 2
+        pygame.draw.circle(screen, (255, 255, 0), (pcx, pcy), 4)
+        pygame.draw.line(screen, (255, 255, 0), (pcx, pcy), (pcx, pcy - 12), 2)
+    else:
+        pygame.draw.rect(screen, (20, 24, 32), (gx0, gy0, grid_box, grid_box))
+        screen.blit(small_font.render("Awaiting Grid State...", True, CLR_TEXT_MUTED), (gx0 + 20, gy0 + grid_box // 2))
+
+    footer_lbl = small_font.render("Coordinate-Free Scan-Matched Memory", True, CLR_TEXT_MUTED)
+    screen.blit(footer_lbl, (cx0 + (cw - footer_lbl.get_width()) // 2, cy0 + ch - 16))
+
+
+def _draw_policy_panel(
+    screen: pygame.Surface,
+    act: np.ndarray,
+    probs: Optional[np.ndarray],
+    action_mask: Optional[np.ndarray],
+    font: pygame.font.Font,
+    small_font: pygame.font.Font,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+) -> None:
+    """Card 3: 9-Action Policy Probabilities & Action Masks."""
+    cx0, cy0, cw, ch = _draw_card(screen, x, y, w, h, "Action Policy Probabilities", font, CLR_ACCENT_GREEN)
+
+    by = cy0 + 6
+    bar_x = cx0 + 50
+    bar_w = cw - 108
+
+    for i, lbl in enumerate(ACT_LABELS):
+        p = float(probs[i]) if (probs is not None and i < len(probs)) else float(act[i])
+        allowed = bool(action_mask[i]) if (action_mask is not None and i < len(action_mask)) else True
+        fired = int(act[i]) == 1
+
+        label_col = CLR_TEXT_PRIMARY if allowed else (130, 95, 95)
+        screen.blit(small_font.render(lbl, True, label_col), (cx0 + 8, by))
+        
+        # Background bar
+        pygame.draw.rect(screen, (28, 34, 46), (bar_x, by + 2, bar_w, 14), border_radius=3)
+        
+        fill_w = int(bar_w * max(0.0, min(1.0, p)))
+        fill_col = CLR_ACCENT_GREEN if fired else ((70, 145, 235) if allowed else (130, 55, 55))
+        if fill_w > 0:
+            pygame.draw.rect(screen, fill_col, (bar_x, by + 2, fill_w, 14), border_radius=3)
+            
+        pct_str = "MASK" if not allowed else f"{int(round(p * 100)):3d}%"
+        pct_col = (255, 80, 80) if not allowed else CLR_TEXT_PRIMARY
+        screen.blit(small_font.render(pct_str, True, pct_col), (bar_x + bar_w + 8, by))
+        by += 26
+
+
+def _draw_sparkline(
+    screen: pygame.Surface,
+    vals: deque[float],
+    title: str,
+    color: tuple[int, int, int],
+    small_font: pygame.font.Font,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+) -> None:
+    pygame.draw.rect(screen, (20, 24, 34), (x, y, w, h), border_radius=4)
+    pygame.draw.rect(screen, (38, 46, 64), (x, y, w, h), 1, border_radius=4)
     cur = vals[-1] if vals else 0.0
-    screen.blit(small_font.render(f"{title}: {cur:+.2f}", True, color), (x + 6, y + 3))
+    screen.blit(small_font.render(f"{title}: {cur:+.2f}", True, color), (x + 8, y + 4))
 
     if len(vals) >= 2:
         arr = np.asarray(vals, dtype=np.float32)
         lo, hi = float(np.min(arr)), float(np.max(arr))
         span = max(1e-3, hi - lo)
-        pad_x, pad_top, pad_bot = 6, 18, 6
+        pad_x, pad_top, pad_bot = 8, 20, 6
         gx_w = max(1, w - 2 * pad_x)
         gy_h = max(1, h - pad_top - pad_bot)
         pts = []
@@ -383,53 +487,42 @@ def _draw_analytics_panel(
     ent_hist: deque[float],
     font: pygame.font.Font,
     small_font: pygame.font.Font,
-    x0: int,
+    x: int,
+    y: int,
     w: int,
     h: int,
 ) -> None:
-    pygame.draw.rect(screen, (14, 16, 23), (x0, 0, w, h))
-    pygame.draw.line(screen, (45, 52, 70), (x0, 0), (x0, h), 1)
-    screen.blit(font.render("Analytics Screen", True, (110, 215, 255)), (x0 + 12, 6))
+    """Card 4: Live Telemetry Analytics & Sensor Breakdown."""
+    cx0, cy0, cw, ch = _draw_card(screen, x, y, w, h, "Learning Dynamics & Sensors", font, CLR_ACCENT_CYAN)
 
-    v = obs["vitals"]
-    ly = 28
-    stats = [
-        f"Mode:   {hud_meta.get('mode', 'MANUAL')}",
-        f"Map:    {hud_meta.get('map_label', 'MAP01')}",
-        f"Ckpt:   {hud_meta.get('ckpt_step', 0):,} stp (u{hud_meta.get('ckpt_upd', 0)})",
-        f"Ep #{hud_meta.get('episode', 1):<3d} Step {hud_meta.get('ep_step', 0):<4d} Exit {hud_meta.get('exits', 0)}",
-        f"HP {v[0]:3.0f} | Arm {v[1]:3.0f} | Ammo {v[3]:3.0f} | Key {int(v[8]+v[9]+v[10])}",
-        f"Act Latency: {hud_meta.get('act_ms', 0.0):.2f} ms | Kills {hud_meta.get('kills', 0)}",
-    ]
-    for s in stats:
-        screen.blit(small_font.render(s, True, (215, 222, 235)), (x0 + 12, ly))
-        ly += 18
+    # Rolling Sparklines (Critic Value, Return, Entropy)
+    sh = 48
+    gap = 8
+    _draw_sparkline(screen, val_hist, "Critic V(s)", CLR_ACCENT_CYAN, small_font, cx0, cy0 + 2, cw, sh)
+    _draw_sparkline(screen, ret_hist, "Ep Return", CLR_ACCENT_GREEN, small_font, cx0, cy0 + sh + gap, cw, sh)
+    _draw_sparkline(screen, ent_hist, "Policy Entropy", CLR_ACCENT_GOLD, small_font, cx0, cy0 + 2 * (sh + gap), cw, sh)
 
-    # Rolling sparklines (Critic Value, Episode Return, Policy Entropy)
-    sw = w - 24
-    sh = 70
-    _draw_sparkline(screen, val_hist, "Critic V(s)", (100, 210, 255), font, small_font, x0 + 12, ly + 4, sw, sh)
-    _draw_sparkline(screen, ret_hist, "Ep Return", (80, 235, 130), font, small_font, x0 + 12, ly + sh + 10, sw, sh)
-    _draw_sparkline(screen, ent_hist, "Policy Entropy", (255, 195, 70), font, small_font, x0 + 12, ly + 2 * (sh + 10), sw, sh)
+    # 360deg Sensor Breakdown
+    ry = cy0 + 3 * (sh + gap) + 12
+    screen.blit(font.render("360° Sensor Breakdown", True, CLR_TEXT_PRIMARY), (cx0, ry))
+    ry += 22
 
-    # Ray hit composition breakdown (64 rays)
-    ry = ly + 3 * (sh + 10) + 10
     rays_type = obs["rays"]["hit_type"]
     rays_dist = obs["rays"]["distance"]
-    screen.blit(font.render("360deg Sensor Breakdown", True, (185, 195, 215)), (x0 + 12, ry))
-    ry += 22
     for ht in (1, 2, 3, 4, 5):
         mask = rays_type == ht
         cnt = int(np.sum(mask))
         frac = cnt / 64.0
         min_d = f"{float(np.min(rays_dist[mask])):.2f}" if cnt > 0 else "--"
         col = HIT_COLORS[ht]
-        screen.blit(small_font.render(f"{HIT_NAMES[ht]:<6s}", True, col), (x0 + 12, ry))
-        bx, bw = x0 + 68, w - 148
-        pygame.draw.rect(screen, (30, 34, 46), (bx, ry + 3, bw, 9), border_radius=2)
+        
+        screen.blit(small_font.render(f"{HIT_NAMES[ht]:<6s}", True, col), (cx0, ry))
+        bx = cx0 + 64
+        bw = cw - 138
+        pygame.draw.rect(screen, (28, 34, 46), (bx, ry + 3, bw, 10), border_radius=2)
         if cnt > 0:
-            pygame.draw.rect(screen, col, (bx, ry + 3, max(3, int(bw * frac)), 9), border_radius=2)
-        screen.blit(small_font.render(f"{cnt:2d} ({min_d})", True, (180, 188, 205)), (bx + bw + 6, ry))
+            pygame.draw.rect(screen, col, (bx, ry + 3, max(4, int(bw * frac)), 10), border_radius=2)
+        screen.blit(small_font.render(f"{cnt:2d} ({min_d})", True, CLR_TEXT_PRIMARY), (bx + bw + 8, ry))
         ry += 18
 
 
@@ -450,7 +543,6 @@ def _attach_telemetry_hook(agent: Any, telemetry: dict[str, Any]) -> None:
     orig_forward = agent.model.forward
 
     def _hooked_forward(*args: Any, **kwargs: Any) -> Any:
-        # Force return_aux=True for spectator analytics while preserving return tuple order
         kwargs["return_aux"] = True
         out = orig_forward(*args, **kwargs)
         logits, value, item2, item3 = out
@@ -473,13 +565,13 @@ def _attach_telemetry_hook(agent: Any, telemetry: dict[str, Any]) -> None:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="4-panel DOOM live 3D wall + neural grid + analytics dashboard.")
+    parser = argparse.ArgumentParser(description="DOOM Spectator + Neural Telemetry Dashboard.")
     parser.add_argument("--tier", type=int, default=2, choices=[1, 2, 3, 4], help="Procedural map tier.")
     parser.add_argument("--seed", type=int, default=1001, help="Initial map seed.")
     parser.add_argument("--wad", type=str, default=None, help="Optional fixed WAD path instead of MapGen.")
     parser.add_argument("--checkpoint", type=str, default=None, help="Path to .pt checkpoint to drive DoomAgent.")
     parser.add_argument("--watch", action="store_true", help="Auto-reload checkpoint when modified during training.")
-    parser.add_argument("--teacher", action="store_true", help="Watch the training-only Privileged Teacher Bot live (switches to --checkpoint once created).")
+    parser.add_argument("--teacher", action="store_true", help="Watch the training-only Privileged Teacher Bot live.")
     parser.add_argument("--random-maps", action="store_true", help="Sample fresh Tier 1-4 maps on each episode.")
     parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--fps", type=int, default=15, help="Spectator render FPS.")
@@ -534,6 +626,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             seed = args.seed + ep_idx - 1
         wad_p, _ = MapGen.sample(tier=tier, knobs={"out_dir": str(tmp_wad_dir)}, seed=seed)
         return Path(wad_p), f"T{tier} s={seed}"
+
     if ckpt_path is not None:
         from gymnasium.spaces import Box, MultiBinary
         from submission.agent import DoomAgent
@@ -556,11 +649,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     env = make_env(wad_path, "MAP01", episode_ticks=2100, render_buffers=True)
 
     pygame.init()
-    left_w, mid_w, grid_w, analytics_w, win_h = 420, 340, 310, 290, 496
-    screen = pygame.display.set_mode((left_w + mid_w + grid_w + analytics_w, win_h))
-    pygame.display.set_caption(f"DevForge DOOM Live Analytics — {map_label}")
+    
+    # High-Definition 1420x760 Command Center Layout
+    # Left: 740px Game Screen Stage
+    # Right: 660px Telemetry Console Grid (Two 320px columns)
+    win_w = 1420
+    win_h = 760
+    screen = pygame.display.set_mode((win_w, win_h))
+    pygame.display.set_caption(f"DevForge DOOM Neural Command Center — {map_label}")
+    
     font = pygame.font.SysFont("dejavusansmono,menlo,consolas,monospace", 13)
     small_font = pygame.font.SysFont("dejavusansmono,menlo,consolas,monospace", 11)
+    bold_font = pygame.font.SysFont("dejavusansmono,menlo,consolas,monospace", 12, bold=True)
     clock = pygame.time.Clock()
 
     shaper = RewardShaper()
@@ -642,7 +742,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     env.close()
                     wad_path, map_label = _next_wad(ep_idx)
                     env = make_env(wad_path, "MAP01", episode_ticks=2100, render_buffers=True)
-                    pygame.display.set_caption(f"DevForge DOOM Live Analytics — {map_label}")
+                    pygame.display.set_caption(f"DevForge DOOM Neural Command Center — {map_label}")
                 obs, _ = env.reset(seed=ep_idx)
                 shaper.reset(env.sector_polygons())
                 priv_prev = env.privileged_state()
@@ -652,22 +752,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 if agent is not None:
                     agent.reset()
 
-            _draw_left_panel(screen, obs, act, font, small_font, left_w, win_h)
-            _draw_mid_panel(screen, obs, telemetry.get("compass"), font, small_font, left_w, mid_w, win_h)
-            grid = agent.odom_state.grid if (agent is not None and agent.odom_state is not None) else None
-            _draw_grid_panel(
-                screen,
-                obs,
-                act,
-                telemetry.get("probs"),
-                telemetry.get("action_mask"),
-                grid,
-                font,
-                small_font,
-                left_w + mid_w,
-                grid_w,
-                win_h,
-            )
+            # Fill master canvas background
+            screen.fill(CLR_BG)
+
             hud_meta = {
                 "mode": "AGENT WATCH" if (agent and ckpt_step > 0) else ("TEACHER LIVE" if teacher_bot else ("AGENT LIVE" if agent else "MANUAL")),
                 "map_label": map_label,
@@ -679,6 +766,57 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "act_ms": act_ms,
                 "kills": int(priv_now.get("kills", 0)),
             }
+
+            # 1. Primary Left Stage: Large First-Person Game Viewport + HUD Controls
+            stage_w = 730
+            _draw_game_stage(screen, obs, act, hud_meta, font, small_font, bold_font, 10, 10, stage_w, win_h - 20)
+
+            # 2. Right Telemetry Console Beside Game Screen: 2 Columns of Cards
+            right_x0 = 10 + stage_w + 12
+            card_w = 328
+            card_h = (win_h - 20 - 12) // 2  # ~364px
+
+            # Top-Left: Radar & Compass
+            _draw_radar_panel(
+                screen,
+                obs,
+                telemetry.get("compass"),
+                font,
+                small_font,
+                right_x0,
+                10,
+                card_w,
+                card_h,
+            )
+
+            # Top-Right: Neural Occupancy Grid
+            grid = agent.odom_state.grid if (agent is not None and agent.odom_state is not None) else None
+            _draw_neural_grid_panel(
+                screen,
+                grid,
+                font,
+                small_font,
+                right_x0 + card_w + 12,
+                10,
+                card_w,
+                card_h,
+            )
+
+            # Bottom-Left: Action Policy Probabilities
+            _draw_policy_panel(
+                screen,
+                act,
+                telemetry.get("probs"),
+                telemetry.get("action_mask"),
+                font,
+                small_font,
+                right_x0,
+                10 + card_h + 12,
+                card_w,
+                card_h,
+            )
+
+            # Bottom-Right: Learning Dynamics & 360° Sensor Breakdown
             _draw_analytics_panel(
                 screen,
                 obs,
@@ -688,10 +826,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 ent_hist,
                 font,
                 small_font,
-                left_w + mid_w + grid_w,
-                analytics_w,
-                win_h,
+                right_x0 + card_w + 12,
+                10 + card_h + 12,
+                card_w,
+                card_h,
             )
+
             pygame.display.flip()
 
             if args.save_screenshot and ep_step >= args.screenshot_steps:
