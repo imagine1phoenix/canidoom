@@ -30,6 +30,11 @@ from typing import Any, Optional
 import numpy as np
 import pygame
 
+try:
+    import cv2  # type: ignore
+except ImportError:
+    cv2 = None
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "template_reference" / "env"))
@@ -150,14 +155,20 @@ def _draw_game_stage(
     perf_txt = small_font.render(f"Act: {hud_meta.get('act_ms', 0.0):.2f} ms | {fps_str} | Ep #{hud_meta.get('episode', 1)} Stp {hud_meta.get('ep_step', 0)}", True, CLR_ACCENT_CYAN)
     screen.blit(perf_txt, (x + w - perf_txt.get_width() - 10, y + 9))
 
-    # Main First-Person Game Viewport (720x540)
+    # Main First-Person Game Viewport (720x524)
     vp_x = x
     vp_y = y + banner_h + 8
     vp_w = w
     vp_h = 524
-    
-    rgb_surf = pygame.surfarray.make_surface(np.transpose(obs["rgb"], (1, 0, 2)))
-    rgb_scaled = pygame.transform.scale(rgb_surf, (vp_w, vp_h))
+
+    if cv2 is not None:
+        up = cv2.resize(obs["rgb"], (vp_w, vp_h), interpolation=cv2.INTER_CUBIC)
+        blur = cv2.GaussianBlur(up, (0, 0), sigmaX=1.2)
+        sharp = cv2.addWeighted(up, 1.45, blur, -0.45, 0)
+        rgb_scaled = pygame.surfarray.make_surface(np.transpose(sharp, (1, 0, 2)))
+    else:
+        rgb_surf = pygame.surfarray.make_surface(np.transpose(obs["rgb"], (1, 0, 2)))
+        rgb_scaled = pygame.transform.smoothscale(rgb_surf, (vp_w, vp_h))
     screen.blit(rgb_scaled, (vp_x, vp_y))
     pygame.draw.rect(screen, CLR_PANEL_BORDER, (vp_x, vp_y, vp_w, vp_h), 1)
 
