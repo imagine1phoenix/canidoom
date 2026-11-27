@@ -16,7 +16,7 @@ import torch.nn as nn
 try:
     from .preprocessing import ModelInputs
 except ImportError:
-    from preprocessing import ModelInputs
+    from preprocessing import ModelInputs  # type: ignore[import-not-found]
 
 
 @dataclass
