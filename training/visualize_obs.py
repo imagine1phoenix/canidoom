@@ -537,6 +537,15 @@ def _draw_analytics_panel(
         screen.blit(small_font.render(f"{cnt:2d} ({min_d})", True, CLR_TEXT_PRIMARY), (bx + bw + 8, ry))
         ry += 18
 
+    # Episode timing & previous outcome footer
+    ry += 6
+    timing_str = (
+        f"Start: {hud_meta.get('ep_start_str', '--:--:--')} "
+        f"({hud_meta.get('ep_elapsed_s', 0.0):.1f}s) | "
+        f"Prev: {hud_meta.get('last_outcome', '--')}@{hud_meta.get('ep_stop_str', '--:--:--')}"
+    )
+    screen.blit(small_font.render(timing_str, True, CLR_TEXT_MUTED), (cx0, ry))
+
 
 def _load_agent_weights(agent: Any, ckpt_path: Path) -> tuple[int, int]:
     import torch
@@ -689,6 +698,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     val_hist: deque[float] = deque(maxlen=90)
     ret_hist: deque[float] = deque(maxlen=90)
     ent_hist: deque[float] = deque(maxlen=90)
+    ep_start_str = time.strftime("%H:%M:%S")
+    ep_start_t = time.perf_counter()
+    last_stop_str = "--:--:--"
+    last_outcome = "--"
 
     last_watch_check = time.perf_counter()
     current_fps = max(0, args.fps)
@@ -761,9 +774,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             if terminated or truncated or force_new_map:
                 if info.get("exit_reached", False):
                     exits_count += 1
+                    last_outcome = "EXIT"
+                elif bool(priv_now.get("dead", False)):
+                    last_outcome = "DEAD"
+                elif truncated:
+                    last_outcome = "TIME"
+                else:
+                    last_outcome = "SKIP"
+                last_stop_str = time.strftime("%H:%M:%S")
                 ep_idx += 1
                 ep_step = 0
                 ep_ret = 0.0
+                ep_start_str = time.strftime("%H:%M:%S")
+                ep_start_t = time.perf_counter()
                 if args.random_maps or force_new_map:
                     env.close()
                     wad_path, map_label = _next_wad(ep_idx)
@@ -792,6 +815,10 @@ def main(argv: Optional[list[str]] = None) -> int:
                 "act_ms": act_ms,
                 "fps_str": (f"{current_fps} FPS (+/-)" if current_fps > 0 else "MAX SPEED [0]") + (" [PAUSED]" if paused else ""),
                 "kills": int(priv_now.get("kills", 0)),
+                "ep_start_str": ep_start_str,
+                "ep_stop_str": last_stop_str,
+                "last_outcome": last_outcome,
+                "ep_elapsed_s": time.perf_counter() - ep_start_t,
             }
 
             # 1. Primary Left Stage: Large First-Person Game Viewport + HUD Controls
