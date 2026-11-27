@@ -139,3 +139,31 @@ def test_task4_damaging_non_lethal_shot_is_not_penalized() -> None:
     r_noop = shaper.step(p0, p1, act_noop)
     assert shaper.last_components.get("wasted_shot", 0.0) == 0.0
     assert r_shoot == pytest.approx(r_noop, abs=1e-6)
+
+
+def test_idle_wall_shot_and_weapon_swap_penalties() -> None:
+    shaper = RewardShaper({"empty_wall_shot": -0.08, "unnecessary_weapon_swap": -0.06})
+    shaper.reset([])
+    p0 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
+    p1 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
+    act_shoot = np.array([0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=np.int8)
+    act_wpn = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=np.int8)
+
+    shaper.step(p0, p1, act_shoot, info={"enemy_visible": False, "has_ammo": True})
+    assert shaper.last_components.get("empty_wall_shot") == pytest.approx(-0.08, abs=1e-6)
+
+    # Damaging non-lethal shot when enemy IS visible must NOT be penalized
+    shaper.step(p0, p1, act_shoot, info={"enemy_visible": True, "has_ammo": True})
+    assert shaper.last_components.get("empty_wall_shot") == pytest.approx(0.0, abs=1e-6)
+
+    # Omitted info must NOT trigger empty_wall_shot penalty
+    shaper.step(p0, p1, act_shoot, info=None)
+    assert shaper.last_components.get("empty_wall_shot") == pytest.approx(0.0, abs=1e-6)
+
+    # Unnecessary weapon swap when holding ammo IS penalized
+    shaper.step(p0, p1, act_wpn, info={"enemy_visible": False, "has_ammo": True})
+    assert shaper.last_components.get("unnecessary_weapon_swap") == pytest.approx(-0.06, abs=1e-6)
+
+    # Weapon swap when out of ammo is NOT penalized
+    shaper.step(p0, p1, act_wpn, info={"enemy_visible": False, "has_ammo": False})
+    assert shaper.last_components.get("unnecessary_weapon_swap") == pytest.approx(0.0, abs=1e-6)

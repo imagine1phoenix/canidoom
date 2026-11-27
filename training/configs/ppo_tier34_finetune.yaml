@@ -44,6 +44,11 @@ coach_interval: 25
 output_dir: "runs/ppo_tier34_finetune"
 best_out: ""                    # never write directly to submission/weights/
 tier_weights: [0.1, 0.2, 0.35, 0.35]
+reward_weights:
+  stuck: -0.06
+  loop_penalty: -0.03
+  empty_wall_shot: -0.08
+  unnecessary_weapon_swap: -0.06
 worker_max_episodes: 100
 worker_timeout_s: 15.0
 render_buffers_ratio: 0.25

@@ -400,6 +400,7 @@ def train(cfg_or_path: str | Path | dict[str, Any]) -> dict[str, Any]:
         worker_timeout_s=float(cfg.get("worker_timeout_s", 15.0)),
         use_reward_shaper=True,
         seed=seed,
+        reward_weights=cfg.get("reward_weights"),
     )
 
     wandb_run = None

@@ -41,6 +41,8 @@ class RewardWeights:
     forward_progress: float = 0.0
     key_approach: float = 0.0
     locked_door_no_key: float = 0.0
+    empty_wall_shot: float = 0.0
+    unnecessary_weapon_swap: float = 0.0
 
 
 def _point_in_segments(x: float, y: float, segs: np.ndarray) -> bool:
@@ -175,6 +177,8 @@ class RewardShaper:
             self.w_fwd = float(weights.forward_progress)
             self.w_key_approach = float(weights.key_approach)
             self.w_locked_door_no_key = float(weights.locked_door_no_key)
+            self.w_empty_wall_shot = float(weights.empty_wall_shot)
+            self.w_wpn_swap = float(weights.unnecessary_weapon_swap)
         else:
             w = dict(weights or {})
             self.w_exit = float(w.get("exit", 15.0))
@@ -198,6 +202,8 @@ class RewardShaper:
             self.w_fwd = float(w.get("forward_progress", 0.0))
             self.w_key_approach = float(w.get("key_approach", 0.0))
             self.w_locked_door_no_key = float(w.get("locked_door_no_key", 0.0))
+            self.w_empty_wall_shot = float(w.get("empty_wall_shot", 0.0))
+            self.w_wpn_swap = float(w.get("unnecessary_weapon_swap", 0.0))
 
         self._sectors: list[tuple[int, float, float, float, float, np.ndarray, float]] = []
         self.visited_sectors: set[int] = set()
@@ -307,6 +313,8 @@ class RewardShaper:
             "forward": 0.0,
             "key_approach": 0.0,
             "locked_door_no_key": 0.0,
+            "empty_wall_shot": 0.0,
+            "unnecessary_weapon_swap": 0.0,
         }
 
         # 1. Exit bonus (guarded once per episode)
@@ -396,6 +404,26 @@ class RewardShaper:
             comp["kill"] = self.w_kill * float(kill_delta)
         elif len(act) > 6 and int(act[6]) == 1 and not bool(priv_now.get("finished", False)):
             comp["wasted_shot"] = self.w_wasted_shot
+
+        finished = bool(priv_now.get("finished", False))
+        if (
+            self.w_empty_wall_shot != 0.0
+            and len(act) > 6
+            and int(act[6]) == 1
+            and kill_delta == 0
+            and info_d.get("enemy_visible") is False
+            and not finished
+        ):
+            comp["empty_wall_shot"] = self.w_empty_wall_shot
+
+        if (
+            self.w_wpn_swap != 0.0
+            and len(act) > 8
+            and int(act[8]) == 1
+            and info_d.get("has_ammo") is True
+            and not finished
+        ):
+            comp["unnecessary_weapon_swap"] = self.w_wpn_swap
 
         item_delta = max(0, int(priv_now.get("items", 0)) - int(priv_prev.get("items", 0)))
         if item_delta > 0:

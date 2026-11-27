@@ -19,6 +19,34 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 
+def _obs_combat_flags(obs: Optional[dict[str, Any]]) -> tuple[bool, bool]:
+    """Extract training-time (enemy_visible, has_ammo) from pre-step observation."""
+    if not obs:
+        return False, False
+
+    enemy_visible = False
+    vis = obs.get("visible_entities")
+    if isinstance(vis, dict):
+        mask = vis.get("mask")
+        etypes = vis.get("entity_type")
+        if mask is not None and etypes is not None:
+            for k in range(min(len(mask), len(etypes))):
+                if float(mask[k]) > 0.5 and int(etypes[k]) in (1, 2, 3, 4):
+                    enemy_visible = True
+                    break
+
+    if not enemy_visible:
+        rays = obs.get("rays")
+        if isinstance(rays, dict):
+            hit_type = rays.get("hit_type")
+            if hit_type is not None and np.any(np.asarray(hit_type) == 4):
+                enemy_visible = True
+
+    vitals = obs.get("vitals")
+    has_ammo = vitals is not None and len(vitals) > 2 and float(vitals[2]) > 0.0
+    return enemy_visible, has_ammo
+
+
 def _obs_key_flags(obs: Optional[dict[str, Any]]) -> tuple[Optional[float], bool]:
     """Extract training-time (min_visible_key_dist, locked_door_blocked_without_key) from obs."""
     if not obs:
@@ -63,6 +91,7 @@ def _worker_main(
     render_buffers: bool,
     use_reward_shaper: bool,
     seed: int,
+    reward_weights: Optional[dict[str, float]] = None,
 ) -> None:
     """Subprocess worker owning a single isolated `doom_env.DoomEnv` and `RewardShaper`."""
     os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -76,16 +105,18 @@ def _worker_main(
     cur_ticks = int(episode_ticks)
     cur_seed = int(seed)
     env = make_env(cur_wad, map_name=cur_map, episode_ticks=cur_ticks, render_buffers=render_buffers)
-    shaper = RewardShaper() if use_reward_shaper else None
+    shaper = RewardShaper(reward_weights) if use_reward_shaper else None
     priv_prev: Optional[dict[str, Any]] = None
+    prev_obs: Optional[dict[str, Any]] = None
     episodes_done = 0
 
     def _do_reset(reset_seed: int) -> tuple[dict[str, Any], dict[str, Any]]:
-        nonlocal priv_prev
+        nonlocal priv_prev, prev_obs
         obs, info = env.reset(seed=reset_seed)
         if shaper is not None:
             shaper.reset(env.sector_polygons())
         priv_prev = env.privileged_state()
+        prev_obs = obs
         info_out = dict(info)
         info_out["episodes_done"] = episodes_done
         info_out["render_buffers"] = render_buffers
@@ -127,10 +158,13 @@ def _worker_main(
 
             elif cmd == "step":
                 act = np.asarray(payload, dtype=np.int8)
+                enemy_vis, has_ammo = _obs_combat_flags(prev_obs)
                 obs, raw_reward, terminated, truncated, info = env.step(act)
                 key_dist_now, locked_blocked = _obs_key_flags(obs)
                 priv_now = env.privileged_state()
                 info_out = dict(info)
+                info_out["enemy_visible"] = enemy_vis
+                info_out["has_ammo"] = has_ammo
                 info_out["key_dist"] = key_dist_now
                 info_out["locked_door_blocked"] = locked_blocked
 
@@ -155,6 +189,7 @@ def _worker_main(
                     obs, _ = _do_reset(cur_seed)
                     cur_seed += 1
                 else:
+                    prev_obs = obs
                     info_out["privileged_state"] = priv_now
 
                 info_out["episodes_done"] = episodes_done
@@ -192,6 +227,7 @@ class VecDoomEnv:
         use_reward_shaper: bool = True,
         seed: int = 42,
         wads: Optional[Sequence[str | os.PathLike]] = None,
+        reward_weights: Optional[dict[str, float]] = None,
     ) -> None:
         self.num_envs = int(num_envs)
         if self.num_envs < 1:
@@ -206,6 +242,7 @@ class VecDoomEnv:
         self.worker_timeout_s = max(0.2, float(worker_timeout_s))
         self.use_reward_shaper = bool(use_reward_shaper)
         self.seed = int(seed)
+        self.reward_weights = dict(reward_weights) if reward_weights is not None else None
         self._closed = False
         self._ctx = mp.get_context("spawn")
 
@@ -249,6 +286,7 @@ class VecDoomEnv:
                 self._render_flags[idx],
                 self.use_reward_shaper,
                 self.seed + idx * 1009,
+                self.reward_weights,
             ),
             daemon=True,
         )
