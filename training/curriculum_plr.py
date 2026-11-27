@@ -376,6 +376,9 @@ class PLRBuffer:
             "staleness_coef": self.staleness_coef,
             "temperature": self.temperature,
             "scaffolding_end_step": self.scaffolding_end_step,
+            "update_idx": int(self.update_idx),
+            "used_seeds": sorted(int(s) for s in self._used_seeds),
+            "rng_state": self.rng.bit_generator.state,
             "global_knobs": dict(self.global_knobs),
             "entries": [{**e, "knobs": dict(e["knobs"])} for e in self.entries],
         }
@@ -383,10 +386,13 @@ class PLRBuffer:
     def load_state_dict(self, state: dict[str, Any]) -> None:
         self.capacity = max(1, int(state.get("capacity", self.capacity)))
         self.tier_weights = [float(x) for x in state.get("tier_weights", self.tier_weights)]
+        self.update_idx = int(state.get("update_idx", self.update_idx))
         self.global_knobs.update(dict(state.get("global_knobs", {})))
         self.entries = []
         self._by_id = {}
         self._by_seed = {}
-        self._used_seeds = set()
+        self._used_seeds = set(int(s) for s in state.get("used_seeds", []))
         for raw in state.get("entries", []):
             self.add(dict(raw))
+        if "rng_state" in state and state["rng_state"] is not None:
+            self.rng.bit_generator.state = state["rng_state"]

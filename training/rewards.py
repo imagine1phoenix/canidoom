@@ -208,6 +208,7 @@ class RewardShaper:
         self._env_prev_priv: Optional[dict[str, Any]] = None
         self.last_components: dict[str, float] = {}
         self._cells: set[tuple[int, int]] = set()
+        self._origin_xy: Optional[tuple[float, float]] = None
         self._pos_hist: list[tuple[float, float]] = []
         self._prev_key_dist: Optional[float] = None
 
@@ -253,6 +254,7 @@ class RewardShaper:
         self._env_prev_priv = None
         self.last_components = {}
         self._cells = set()
+        self._origin_xy = None
         self._pos_hist = []
         self._prev_key_dist = None
 
@@ -416,8 +418,11 @@ class RewardShaper:
         if self.stuck_steps > 8:
             comp["stuck"] = self.w_stuck
 
-        # 7. Anti-loop exploration shaping: reward new 80-unit cells, punish dithering in place
-        cell = (int(math.floor(x_now / 80.0)), int(math.floor(y_now / 80.0)))
+        # 7. Anti-loop exploration shaping: reward new 80-unit spawn-relative cells, punish dithering in place
+        if self._origin_xy is None:
+            self._origin_xy = (float(priv_prev.get("x", 0.0)), float(priv_prev.get("y", 0.0)))
+        ox0, oy0 = self._origin_xy
+        cell = (int(math.floor((x_now - ox0) / 80.0)), int(math.floor((y_now - oy0) / 80.0)))
         if cell not in self._cells:
             self._cells.add(cell)
             if len(self._cells) > 1:

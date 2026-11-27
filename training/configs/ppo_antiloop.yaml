@@ -22,7 +22,7 @@ compass_coef: 0.15
 bc_kl_beta_init: 0.0
 bc_enabled: false
 bc_warmstart_path: null
-rgb_dropout_p: 0.15
+rgb_dropout_p: 0.0
 scaffolding_end_step: 3000000
 total_updates: 6000
 save_interval: 25

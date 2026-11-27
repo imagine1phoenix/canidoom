@@ -272,3 +272,15 @@ class StageCurriculum:
             self.state_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except OSError:
             pass
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "stage_idx": int(self.stage_idx),
+            "stage_lock": self.stage_lock,
+            "stage_max": self.stage_max,
+            "exits": list(self._exits),
+            "episodes_in_stage": int(self._episodes_in_stage),
+            "stage_start_step": int(self._stage_start_step),
+            "replay_tick": int(self._replay_tick),
+            "stage_buffer": {k: dict(v) for k, v in self._stage_buffer.items()},
+        }

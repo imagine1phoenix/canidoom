@@ -22,14 +22,14 @@ compass_coef: 0.15
 bc_kl_beta_init: 0.0
 bc_enabled: false
 bc_warmstart_path: null
-rgb_dropout_p: 0.25
+rgb_dropout_p: 0.0
 scaffolding_end_step: 12000000
 total_updates: 2500
 save_interval: 25
 latest_interval: 2
 coach_interval: 25
 output_dir: "runs/ppo_flagship"
-best_out: "submission/weights/best_agent.pt"
+best_out: ""
 tier_weights: [1.0, 1.5, 2.5, 3.0]
 worker_max_episodes: 100
 worker_timeout_s: 15.0

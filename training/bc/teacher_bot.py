@@ -333,11 +333,13 @@ class PrivilegedTeacherBot:
         desired_deg = math.degrees(math.atan2(target[1] - py, target[0] - px))
         diff_deg = (desired_deg - ang_deg + 180.0) % 360.0 - 180.0
 
-        # 3. Combat override only if enemy is close & threatening, else shoot on the move
+        # 3. Combat override with strafe-kiting / backward-spacing on close or heavy enemies
         engaged_combat = False
+        health = float(priv.get("health", 100.0))
         if best_enemy is not None and ammo > 0.0:
             edist, e_ang = best_enemy
-            if edist < 0.36:
+            kite_dist = 0.45 if health < 70.0 else 0.36
+            if edist < kite_dist:
                 engaged_combat = True
                 if e_ang > 0.10:
                     act[4] = 1  # TURN_LEFT
@@ -345,9 +347,9 @@ class PrivilegedTeacherBot:
                     act[5] = 1  # TURN_RIGHT
                 if abs(e_ang) < 0.24:
                     act[6] = 1  # ATTACK
-                # Strafe dodge while shooting
+                # Strafe-kite + back-space instead of face-tanking heavy enemies
                 act[2 if (self._step // 8) % 2 == 0 else 3] = 1
-                if edist < 0.12:
+                if edist < 0.24 or (health < 70.0 and edist < 0.35):
                     act[1] = 1
             elif edist < 0.58 and abs(e_ang) < 0.22:
                 act[6] = 1  # opportunistic shot while continuing navigation
