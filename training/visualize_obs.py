@@ -612,6 +612,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     stage_file = (ckpt_path.parent.parent / "stage_state.json") if ckpt_path is not None else None
     last_mtime = -1.0
     last_stage_idx: Optional[int] = None
+    override_tier: Optional[int] = None
     ckpt_step, ckpt_upd = 0, 0
 
     def _read_stage_state() -> Optional[dict[str, Any]]:
@@ -624,6 +625,10 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     def _next_wad(ep_idx: int) -> tuple[Path, str]:
         nonlocal last_stage_idx
+        if override_tier is not None:
+            seed = int(rng.integers(200_000, 999_999))
+            wad_p, _ = MapGen.sample(tier=override_tier, knobs={"out_dir": str(tmp_wad_dir)}, seed=seed)
+            return Path(wad_p), f"DEMO T{override_tier} s={seed}"
         if args.wad:
             return Path(args.wad), Path(args.wad).name
         st = _read_stage_state()
@@ -721,13 +726,28 @@ def main(argv: Optional[list[str]] = None) -> int:
                         running = False
                     elif event.key == pygame.K_r:
                         force_new_map = True
+                    elif event.key == pygame.K_1:
+                        override_tier = 1
+                        force_new_map = True
+                    elif event.key == pygame.K_2:
+                        override_tier = 2
+                        force_new_map = True
+                    elif event.key == pygame.K_3:
+                        override_tier = 3
+                        force_new_map = True
+                    elif event.key == pygame.K_4:
+                        override_tier = 4
+                        force_new_map = True
+                    elif event.key == pygame.K_0:
+                        override_tier = None
+                        force_new_map = True
                     elif event.key == pygame.K_SPACE:
                         paused = not paused
                     elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_RIGHTBRACKET, pygame.K_UP):
                         current_fps = min(120, (35 if current_fps == 0 else current_fps + 10))
                     elif event.key in (pygame.K_MINUS, pygame.K_LEFTBRACKET, pygame.K_DOWN):
                         current_fps = max(5, (35 if current_fps == 0 else current_fps - 5))
-                    elif event.key in (pygame.K_0, pygame.K_u):
+                    elif event.key == pygame.K_u:
                         current_fps = 0  # Uncapped max speed!
 
             if paused:
