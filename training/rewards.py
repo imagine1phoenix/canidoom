@@ -36,6 +36,8 @@ class RewardWeights:
     conflict_buttons: float = -0.01
     backward_move: float = -0.004
     forward_progress: float = 0.004
+    key_approach: float = 0.0
+    locked_door_no_key: float = 0.0
 
 
 def _point_in_segments(x: float, y: float, segs: np.ndarray) -> bool:
@@ -168,6 +170,8 @@ class RewardShaper:
             self.w_conflict = float(weights.conflict_buttons)
             self.w_back = float(weights.backward_move)
             self.w_fwd = float(weights.forward_progress)
+            self.w_key_approach = float(weights.key_approach)
+            self.w_locked_door_no_key = float(weights.locked_door_no_key)
         else:
             w = dict(weights or {})
             self.w_exit = float(w.get("exit", 15.0))
@@ -189,6 +193,8 @@ class RewardShaper:
             self.w_conflict = float(w.get("conflict_buttons", -0.01))
             self.w_back = float(w.get("backward_move", -0.004))
             self.w_fwd = float(w.get("forward_progress", 0.004))
+            self.w_key_approach = float(w.get("key_approach", 0.0))
+            self.w_locked_door_no_key = float(w.get("locked_door_no_key", 0.0))
 
         self._sectors: list[tuple[int, float, float, float, float, np.ndarray, float]] = []
         self.visited_sectors: set[int] = set()
@@ -203,6 +209,7 @@ class RewardShaper:
         self.last_components: dict[str, float] = {}
         self._cells: set[tuple[int, int]] = set()
         self._pos_hist: list[tuple[float, float]] = []
+        self._prev_key_dist: Optional[float] = None
 
     @property
     def visited_sector_count(self) -> int:
@@ -247,6 +254,7 @@ class RewardShaper:
         self.last_components = {}
         self._cells = set()
         self._pos_hist = []
+        self._prev_key_dist = None
 
         if env_obj is not None:
             priv0 = env_obj.privileged_state()
@@ -292,6 +300,8 @@ class RewardShaper:
             "conflict": 0.0,
             "backward": 0.0,
             "forward": 0.0,
+            "key_approach": 0.0,
+            "locked_door_no_key": 0.0,
         }
 
         # 1. Exit bonus (guarded once per episode)
@@ -323,12 +333,23 @@ class RewardShaper:
                 self.visited_sectors.add(sid)
                 comp["sector"] = self.w_sector * weight
 
-        # 3. Keycard / skull pickup delta
+        # 3. Keycard / skull pickup delta & key approach / locked-door-no-key shaping
         keys_prev = np.asarray(priv_prev.get("keys", np.zeros(6)), dtype=np.float32)
         keys_now = np.asarray(priv_now.get("keys", np.zeros(6)), dtype=np.float32)
         key_delta = max(0.0, float(np.sum(keys_now - keys_prev)))
         if key_delta > 0.0:
             comp["key"] = self.w_key * key_delta
+
+        finished_now = bool(priv_now.get("finished", False))
+        key_dist_now = info_d.get("key_dist")
+        if self.w_key_approach != 0.0 and key_dist_now is not None and self._prev_key_dist is not None and not finished_now:
+            delta_kd = self._prev_key_dist - float(key_dist_now)
+            if delta_kd > 0.0:
+                comp["key_approach"] = min(0.25, self.w_key_approach * delta_kd)
+        self._prev_key_dist = float(key_dist_now) if key_dist_now is not None else None
+
+        if self.w_locked_door_no_key != 0.0 and info_d.get("locked_door_blocked") is True and not finished_now:
+            comp["locked_door_no_key"] = self.w_locked_door_no_key
 
         # 4. Door open / locked door unlock / door reversal bounce
         fl_prev = priv_prev.get("sector_floor")

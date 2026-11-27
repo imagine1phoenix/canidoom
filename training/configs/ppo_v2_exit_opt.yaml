@@ -1,0 +1,84 @@
+# All-Tier Exit & Keycard-Optimized PPO Fine-Tune (KL-anchored to bc_round0.pt)
+seed: 42
+curriculum: staged
+stage_start: 2
+stage_max: 4
+stage_window: 64
+stage_min_episodes: 64
+stage_min_steps: 100000
+stage_max_steps: 10000000
+
+resume_checkpoint: "runs/bc_dagger_v2/bc_round0.pt"
+bc_anchor_checkpoint: "runs/bc_dagger_v2/bc_round0.pt"
+bc_kl_beta_init: 0.035
+bc_kl_decay_steps: 2000000
+bc_enabled: true
+
+num_envs: 8
+rollout_steps: 128
+bptt_len: 64
+ppo_epochs: 4
+minibatch_chunks: 8
+gamma: 0.99
+gae_lambda: 0.95
+clip_coef: 0.15
+lr: 8.0e-5
+max_grad_norm: 0.5
+vf_coef: 0.5
+ent_coef: 0.008
+ent_coef_start: 0.008
+ent_coef_end: 0.003
+rnd_coef: 0.03
+grid_novelty_coef: 0.045
+aux_coef: 0.10
+compass_coef: 0.15
+rgb_dropout_p: 0.0
+scaffolding_end_step: 1000000
+total_updates: 3000
+save_interval: 25
+latest_interval: 2
+eval_interval: 100
+val_suite: "training/scorer/eval_suite.json"
+coach_interval: 25
+output_dir: "runs/ppo_v2_exit_opt"
+best_out: ""                    # never write directly to submission/weights/
+tier_weights: [0.15, 0.25, 0.30, 0.30]
+reward_weights:
+  exit: 30.0
+  exit_speed: 6.0
+  key: 10.0
+  locked_door: 12.0
+  key_approach: 1.5
+  locked_door_no_key: -0.12
+  stuck: -0.10
+  loop_penalty: -0.05
+  empty_wall_shot: -0.08
+  unnecessary_weapon_swap: -0.06
+  wall_spin: -0.04
+worker_max_episodes: 100
+worker_timeout_s: 15.0
+render_buffers_ratio: 0.25
+
+cpu_threads: 1
+max_vram_mb: 2048
+max_ram_mb: 8192
+agent_ms_per_step: 40.0
+
+use_llm_coach: true
+wandb_enabled: false
+
+model_config:
+  d_model: 256
+  gru_dim: 256
+  num_slots: 4
+  slot_dim: 8
+  use_rgb: true
+  use_grid: true
+
+plr:
+  buffer_size: 256
+  seed_min: 100000
+  seed_max: 999999
+  replay_prob: 0.45
+  staleness_coef: 0.35
+  temperature: 0.7

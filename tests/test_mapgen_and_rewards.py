@@ -180,3 +180,21 @@ def test_mapgen_reuses_existing_wad_and_handles_replace_permission_error(
 
     wad3, _ = MapGen.sample(tier=3, seed=161_129, scaffolding_alpha=0.25, out_dir=tmp_path)
     assert wad3.is_file() and wad3.stat().st_size >= 12
+
+
+def test_key_approach_and_locked_door_no_key_shaping() -> None:
+    """Verify key_approach delta reward and locked_door_no_key penalty in RewardShaper."""
+    shaper_k = RewardShaper({"key_approach": 1.5, "locked_door_no_key": -0.12})
+    shaper_k.reset([])
+    p0 = {"x": 0.0, "y": 0.0, "angle": 0.0, "keys": np.zeros(6), "finished": False}
+    p1 = {"x": 10.0, "y": 0.0, "angle": 0.0, "keys": np.zeros(6), "finished": False}
+    act_noop = np.zeros(9, dtype=np.int8)
+
+    shaper_k.step(p0, p1, act_noop, info={"key_dist": 0.40, "locked_door_blocked": False})
+    assert shaper_k.last_components.get("key_approach") == pytest.approx(0.0, abs=1e-6)
+
+    shaper_k.step(p0, p1, act_noop, info={"key_dist": 0.30, "locked_door_blocked": False})
+    assert shaper_k.last_components.get("key_approach") == pytest.approx(0.15, abs=1e-6)
+
+    shaper_k.step(p0, p1, act_noop, info={"key_dist": None, "locked_door_blocked": True})
+    assert shaper_k.last_components.get("locked_door_no_key") == pytest.approx(-0.12, abs=1e-6)

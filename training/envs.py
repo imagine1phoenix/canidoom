@@ -19,6 +19,41 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 
+def _obs_key_flags(obs: Optional[dict[str, Any]]) -> tuple[Optional[float], bool]:
+    """Extract training-time (min_visible_key_dist, locked_door_blocked_without_key) from obs."""
+    if not obs:
+        return None, False
+
+    key_dist: Optional[float] = None
+    vis = obs.get("visible_entities")
+    if isinstance(vis, dict):
+        mask = vis.get("mask")
+        etypes = vis.get("entity_type")
+        feats = vis.get("features")
+        if mask is not None and etypes is not None and feats is not None:
+            for k in range(min(len(mask), len(etypes), len(feats))):
+                if float(mask[k]) > 0.5 and int(etypes[k]) == 9:
+                    d = float(feats[k][0])
+                    if key_dist is None or d < key_dist:
+                        key_dist = d
+
+    vitals = obs.get("vitals")
+    has_any_key = vitals is not None and len(vitals) >= 14 and float(np.sum(vitals[8:14])) > 0.5
+    locked_blocked = False
+    if not has_any_key:
+        rays = obs.get("rays")
+        if isinstance(rays, dict):
+            hit_type = rays.get("hit_type")
+            dist = rays.get("distance")
+            if hit_type is not None and dist is not None and len(hit_type) >= 64 and len(dist) >= 64:
+                for idx in (61, 62, 63, 0, 1, 2, 3):
+                    if int(hit_type[idx]) == 3 and float(dist[idx]) < 0.14:
+                        locked_blocked = True
+                        break
+
+    return key_dist, locked_blocked
+
+
 def _worker_main(
     conn: Any,
     worker_idx: int,
@@ -93,8 +128,11 @@ def _worker_main(
             elif cmd == "step":
                 act = np.asarray(payload, dtype=np.int8)
                 obs, raw_reward, terminated, truncated, info = env.step(act)
+                key_dist_now, locked_blocked = _obs_key_flags(obs)
                 priv_now = env.privileged_state()
                 info_out = dict(info)
+                info_out["key_dist"] = key_dist_now
+                info_out["locked_door_blocked"] = locked_blocked
 
                 if shaper is not None and priv_prev is not None:
                     reward = float(shaper.step(priv_prev, priv_now, act, info_out))
