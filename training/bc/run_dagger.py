@@ -74,9 +74,12 @@ def collect_episodes(
 
     student: Optional[DoomAgent] = None
     if student_ckpt is not None and student_ckpt.is_file() and teacher_beta < 1.0:
-        student = DoomAgent(Box(-np.inf, np.inf, (1,), np.float32), MultiBinary(9), device=device)
-        ckpt = load_checkpoint(student_ckpt, map_location=device)
-        student.model.load_state_dict(ckpt["model_state_dict"], strict=False)
+        student = DoomAgent(
+            Box(-np.inf, np.inf, (1,), np.float32),
+            MultiBinary(9),
+            checkpoint_path=str(student_ckpt),
+            device=device,
+        )
         student.model.eval()
 
     rng = np.random.default_rng(seed_base)

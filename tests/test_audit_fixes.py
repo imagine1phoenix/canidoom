@@ -142,12 +142,13 @@ def test_task4_damaging_non_lethal_shot_is_not_penalized() -> None:
 
 
 def test_idle_wall_shot_and_weapon_swap_penalties() -> None:
-    shaper = RewardShaper({"empty_wall_shot": -0.08, "unnecessary_weapon_swap": -0.06})
+    shaper = RewardShaper({"empty_wall_shot": -0.08, "unnecessary_weapon_swap": -0.06, "wall_spin": -0.04})
     shaper.reset([])
     p0 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
     p1 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
     act_shoot = np.array([0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=np.int8)
     act_wpn = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1], dtype=np.int8)
+    act_turn = np.array([0, 0, 0, 0, 1, 0, 0, 0, 0], dtype=np.int8)
 
     shaper.step(p0, p1, act_shoot, info={"enemy_visible": False, "has_ammo": True})
     assert shaper.last_components.get("empty_wall_shot") == pytest.approx(-0.08, abs=1e-6)
@@ -167,3 +168,11 @@ def test_idle_wall_shot_and_weapon_swap_penalties() -> None:
     # Weapon swap when out of ammo is NOT penalized
     shaper.step(p0, p1, act_wpn, info={"enemy_visible": False, "has_ammo": False})
     assert shaper.last_components.get("unnecessary_weapon_swap") == pytest.approx(0.0, abs=1e-6)
+
+    # Wall spin (turning in place with no enemy visible) IS penalized
+    shaper.step(p0, p1, act_turn, info={"enemy_visible": False, "has_ammo": True})
+    assert shaper.last_components.get("wall_spin") == pytest.approx(-0.04, abs=1e-6)
+
+    # Turning while enemy IS visible is NOT penalized
+    shaper.step(p0, p1, act_turn, info={"enemy_visible": True, "has_ammo": True})
+    assert shaper.last_components.get("wall_spin") == pytest.approx(0.0, abs=1e-6)

@@ -43,6 +43,7 @@ class RewardWeights:
     locked_door_no_key: float = 0.0
     empty_wall_shot: float = 0.0
     unnecessary_weapon_swap: float = 0.0
+    wall_spin: float = 0.0
 
 
 def _point_in_segments(x: float, y: float, segs: np.ndarray) -> bool:
@@ -179,6 +180,7 @@ class RewardShaper:
             self.w_locked_door_no_key = float(weights.locked_door_no_key)
             self.w_empty_wall_shot = float(weights.empty_wall_shot)
             self.w_wpn_swap = float(weights.unnecessary_weapon_swap)
+            self.w_wall_spin = float(weights.wall_spin)
         else:
             w = dict(weights or {})
             self.w_exit = float(w.get("exit", 15.0))
@@ -204,6 +206,7 @@ class RewardShaper:
             self.w_locked_door_no_key = float(w.get("locked_door_no_key", 0.0))
             self.w_empty_wall_shot = float(w.get("empty_wall_shot", 0.0))
             self.w_wpn_swap = float(w.get("unnecessary_weapon_swap", 0.0))
+            self.w_wall_spin = float(w.get("wall_spin", 0.0))
 
         self._sectors: list[tuple[int, float, float, float, float, np.ndarray, float]] = []
         self.visited_sectors: set[int] = set()
@@ -315,6 +318,7 @@ class RewardShaper:
             "locked_door_no_key": 0.0,
             "empty_wall_shot": 0.0,
             "unnecessary_weapon_swap": 0.0,
+            "wall_spin": 0.0,
         }
 
         # 1. Exit bonus (guarded once per episode)
@@ -448,6 +452,15 @@ class RewardShaper:
             self.stuck_steps = 0
         if self.stuck_steps > 8:
             comp["stuck"] = self.w_stuck
+        if (
+            self.w_wall_spin != 0.0
+            and len(act) > 5
+            and (int(act[4]) == 1 or int(act[5]) == 1)
+            and disp < 1.5
+            and info_d.get("enemy_visible") is False
+            and not finished
+        ):
+            comp["wall_spin"] = self.w_wall_spin
 
         # 7. Anti-loop exploration shaping: reward new 80-unit spawn-relative cells, punish dithering in place
         if self._origin_xy is None:

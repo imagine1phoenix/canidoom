@@ -354,6 +354,17 @@ class PrivilegedTeacherBot:
             elif edist < 0.58 and abs(e_ang) < 0.22:
                 act[6] = 1  # opportunistic shot while continuing navigation
 
+        rays_d = obs["rays"]["distance"]
+        rays_t = obs["rays"]["hit_type"]
+        front_d = float(min(rays_d[0], rays_d[1], rays_d[63]))
+        left_d = float(np.mean(rays_d[3:10]))
+        right_d = float(np.mean(rays_d[54:61]))
+        front_ray_idxs = (0, 1, 2, 3, 61, 62, 63)
+        door_ray_ahead = any(
+            int(rays_t[idx]) in (2, 3) and float(rays_d[idx]) < 0.16
+            for idx in front_ray_idxs
+        )
+
         # 4. Navigation steering when not locked in close combat
         if not engaged_combat:
             if diff_deg > 10.0:
@@ -363,32 +374,40 @@ class PrivilegedTeacherBot:
             if abs(diff_deg) < 60.0:
                 act[0] = 1  # MOVE_FORWARD
 
-            rays_d = obs["rays"]["distance"]
-            front_d = float(min(rays_d[0], rays_d[1], rays_d[63]))
-            left_d = float(np.mean(rays_d[3:8]))
-            right_d = float(np.mean(rays_d[56:61]))
-            if front_d < 0.055:
-                act[2 if left_d > right_d else 3] = 1
+            if front_d < 0.08 and not door_ray_ahead:
+                # Never push or spin into a wall: release forward, clear opposing turn, turn & sidestep toward open space
+                act[0] = 0
+                if left_d >= right_d:
+                    act[4] = 1
+                    act[5] = 0
+                    act[2] = 1
+                    act[3] = 0
+                else:
+                    act[5] = 1
+                    act[4] = 0
+                    act[3] = 1
+                    act[2] = 0
 
-        # 5. Unstuck recovery (sidestep + forward)
+        # 5. Unstuck recovery (backstep + turn + sidestep on first half, then forward + sidestep)
         if self._unstuck_timer > 0:
             self._unstuck_timer -= 1
+            if self._unstuck_timer >= 3:
+                act[0] = 0
+                act[1] = 1
+                act[4 if self._unstuck_dir > 0 else 5] = 1
+                act[5 if self._unstuck_dir > 0 else 4] = 0
+            else:
+                act[0] = 1
             act[2 if self._unstuck_dir > 0 else 3] = 1
-            act[0] = 1
 
         # 6. Door & Exit USE interaction — ONLY when a door ray is directly ahead (closed) or exit switch
-        rays_d = obs["rays"]["distance"]
-        rays_t = obs["rays"]["hit_type"]
-        front_ray_idxs = (0, 1, 2, 62, 63)
-        door_ray_ahead = any(
-            int(rays_t[idx]) in (2, 3) and float(rays_d[idx]) < 0.14
-            for idx in front_ray_idxs
-        )
         near_exit_use = self.layout.exit_is_use and (
             math.hypot(self.layout.exit_pos[0] - px, self.layout.exit_pos[1] - py) < 72.0
         )
         if self._use_cooldown == 0 and (door_ray_ahead or near_exit_use):
             act[7] = 1  # USE
-            self._use_cooldown = 14
+            if door_ray_ahead and front_d < 0.07:
+                act[0] = 0
+            self._use_cooldown = 8
 
         return act
