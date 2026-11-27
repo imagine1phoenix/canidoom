@@ -145,6 +145,8 @@ def _worker_main(
                 if done:
                     episodes_done += 1
                     term_priv = dict(priv_now)
+                    # Preserve the TRUE final observation of the ending episode before auto-reset replaces `obs`.
+                    info_out["final_observation"] = obs
                     info_out["terminal_privileged_state"] = term_priv
                     info_out["privileged_state"] = term_priv
                     info_out["exit_reached"] = bool(

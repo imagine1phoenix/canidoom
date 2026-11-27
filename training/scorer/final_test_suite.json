@@ -1,0 +1,200 @@
+[
+  {
+    "id": "final_test_t1_50001",
+    "wad": "maps/final_test/final_t1_seed50001.wad",
+    "map_name": "MAP01",
+    "tier": 1,
+    "episode_ticks": 2100,
+    "seed": 50001,
+    "sha256": "0469cf625d96de62f0432707756e0a11cb29751dd92dc55e675144ebda841f5a",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t1_50002",
+    "wad": "maps/final_test/final_t1_seed50002.wad",
+    "map_name": "MAP01",
+    "tier": 1,
+    "episode_ticks": 2100,
+    "seed": 50002,
+    "sha256": "1048b02652d59845d476c3caa47fa1dc754e3723806ba5f83289de51f547501d",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t1_50003",
+    "wad": "maps/final_test/final_t1_seed50003.wad",
+    "map_name": "MAP01",
+    "tier": 1,
+    "episode_ticks": 2100,
+    "seed": 50003,
+    "sha256": "79abaa5fc008b294beb250f277931f3baa0ffcca3cedefd5908016ef87548a3c",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t1_50004",
+    "wad": "maps/final_test/final_t1_seed50004.wad",
+    "map_name": "MAP01",
+    "tier": 1,
+    "episode_ticks": 2100,
+    "seed": 50004,
+    "sha256": "fcd702264345d34f09b3e362f4df9b151f37af3ec47deda39cb51b21faac4e10",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t2_50005",
+    "wad": "maps/final_test/final_t2_seed50005.wad",
+    "map_name": "MAP01",
+    "tier": 2,
+    "episode_ticks": 2100,
+    "seed": 50005,
+    "sha256": "2feb3b476d2f365848d5368fcb6f3ec76de800f1df31dde3c327c2eebe635974",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t2_50006",
+    "wad": "maps/final_test/final_t2_seed50006.wad",
+    "map_name": "MAP01",
+    "tier": 2,
+    "episode_ticks": 2100,
+    "seed": 50006,
+    "sha256": "6e9c72f8c2bba14234116d307577947a63d18c59e9b44c76a60980fc14316fdb",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t2_50007",
+    "wad": "maps/final_test/final_t2_seed50007.wad",
+    "map_name": "MAP01",
+    "tier": 2,
+    "episode_ticks": 2100,
+    "seed": 50007,
+    "sha256": "5bc7c43b01dd8bc5c72c2798f7ef423de89634ed746869ed995672e08edb9cd4",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t2_50008",
+    "wad": "maps/final_test/final_t2_seed50008.wad",
+    "map_name": "MAP01",
+    "tier": 2,
+    "episode_ticks": 2100,
+    "seed": 50008,
+    "sha256": "f826372e956ca99adfe45ac1c7ab18a45e1ac7e365bd1d640462176b8b9d60ce",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t3_50009",
+    "wad": "maps/final_test/final_t3_seed50009.wad",
+    "map_name": "MAP01",
+    "tier": 3,
+    "episode_ticks": 2100,
+    "seed": 50009,
+    "sha256": "a2b4f650fb3027143a21390b79356ff6098622a1d6f07e7a1ecab2539f650b6b",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t3_50010",
+    "wad": "maps/final_test/final_t3_seed50010.wad",
+    "map_name": "MAP01",
+    "tier": 3,
+    "episode_ticks": 2100,
+    "seed": 50010,
+    "sha256": "368bcbba62fdd2ef0432021cd7f8fb67d61f9e753ea1d82dcc69b6fcf62f5213",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t3_50011",
+    "wad": "maps/final_test/final_t3_seed50011.wad",
+    "map_name": "MAP01",
+    "tier": 3,
+    "episode_ticks": 2100,
+    "seed": 50011,
+    "sha256": "bab92e89bf23d6520124437e2cb7ec8c01ee6a126dea90649a124f842d531f3a",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t3_50012",
+    "wad": "maps/final_test/final_t3_seed50012.wad",
+    "map_name": "MAP01",
+    "tier": 3,
+    "episode_ticks": 2100,
+    "seed": 50012,
+    "sha256": "8209e461b44443ffe46acfe4dcddd6149091a61092e83fe4476decdfddc72b28",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t4_50013",
+    "wad": "maps/final_test/final_t4_seed50013.wad",
+    "map_name": "MAP01",
+    "tier": 4,
+    "episode_ticks": 4200,
+    "seed": 50013,
+    "sha256": "0dfe5039da54b92737a13c4b95f15fff9623f3d7e05df2d0f364185f8f049d4f",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t4_50014",
+    "wad": "maps/final_test/final_t4_seed50014.wad",
+    "map_name": "MAP01",
+    "tier": 4,
+    "episode_ticks": 4200,
+    "seed": 50014,
+    "sha256": "a27c9a1850d2dc4aae19b102f009bb37f8e4cb639697bef6b7dbbbbc3ae886e0",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t4_50015",
+    "wad": "maps/final_test/final_t4_seed50015.wad",
+    "map_name": "MAP01",
+    "tier": 4,
+    "episode_ticks": 4200,
+    "seed": 50015,
+    "sha256": "35d3440a6bab72475c621b6e243817dd897953c62098e7a9bb0a72124023ca05",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_t4_50016",
+    "wad": "maps/final_test/final_t4_seed50016.wad",
+    "map_name": "MAP01",
+    "tier": 4,
+    "episode_ticks": 4200,
+    "seed": 50016,
+    "sha256": "f83e3e5278b56d8726620c0f5d146d9bbb46a8c2bb2041d05fd3586b1e4cc03d",
+    "source": "procedural_final_test",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_freedoom2_map04",
+    "wad": "freedoom2.wad",
+    "map_name": "MAP04",
+    "tier": 3,
+    "episode_ticks": 4200,
+    "seed": 50104,
+    "sha256": "",
+    "source": "freedoom2",
+    "split": "final_test"
+  },
+  {
+    "id": "final_test_freedoom2_map05",
+    "wad": "freedoom2.wad",
+    "map_name": "MAP05",
+    "tier": 4,
+    "episode_ticks": 4200,
+    "seed": 50105,
+    "sha256": "",
+    "source": "freedoom2",
+    "split": "final_test"
+  }
+]

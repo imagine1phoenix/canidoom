@@ -283,4 +283,22 @@ class StageCurriculum:
             "stage_start_step": int(self._stage_start_step),
             "replay_tick": int(self._replay_tick),
             "stage_buffer": {k: dict(v) for k, v in self._stage_buffer.items()},
+            "used_seeds": sorted(int(s) for s in self._used),
+            "rng_state": self.rng.bit_generator.state,
         }
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        self.stage_idx = max(0, min(len(self.stages) - 1, int(state.get("stage_idx", self.stage_idx))))
+        if "stage_lock" in state and self.stage_lock is None:
+            self.stage_lock = state["stage_lock"]
+        if "stage_max" in state and self.stage_max is None:
+            self.stage_max = state["stage_max"]
+        self._exits = deque((float(x) for x in state.get("exits", [])), maxlen=self.window)
+        self._episodes_in_stage = int(state.get("episodes_in_stage", 0))
+        self._stage_start_step = int(state.get("stage_start_step", 0))
+        self._replay_tick = int(state.get("replay_tick", 0))
+        self._stage_buffer = {str(k): dict(v) for k, v in state.get("stage_buffer", {}).items()}
+        self._used = set(int(s) for s in state.get("used_seeds", []))
+        if "rng_state" in state and state["rng_state"] is not None:
+            self.rng.bit_generator.state = state["rng_state"]
+        self.save()

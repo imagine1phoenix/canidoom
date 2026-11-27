@@ -66,6 +66,18 @@ class RunningMeanStd:
         std_t = torch.sqrt(torch.as_tensor(self.var, dtype=x.dtype, device=x.device) + 1e-8)
         return ((x - mean_t) / std_t).clamp(-clip, clip)
 
+    def state_dict(self) -> dict:
+        return {
+            "mean": np.array(self.mean, dtype=np.float64, copy=True),
+            "var": np.array(self.var, dtype=np.float64, copy=True),
+            "count": float(self.count),
+        }
+
+    def load_state_dict(self, state: dict) -> None:
+        self.mean = np.array(state["mean"], dtype=np.float64, copy=True)
+        self.var = np.array(state["var"], dtype=np.float64, copy=True)
+        self.count = float(state["count"])
+
 
 def compute_grid_novelty(grid: torch.Tensor) -> torch.Tensor:
     """Compute per-sample egocentric grid exploration novelty bonus `(B,)` from `(B, 6, 32, 32)`.
@@ -157,6 +169,20 @@ class RNDModule(nn.Module):
 
     def forward(self, features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         return self.compute_intrinsic_reward(features)
+
+    def full_state_dict(self) -> dict:
+        return {
+            "target": self.target.state_dict(),
+            "predictor": self.predictor.state_dict(),
+            "obs_rms": self.obs_rms.state_dict(),
+            "rew_rms": self.rew_rms.state_dict(),
+        }
+
+    def load_full_state_dict(self, state: dict) -> None:
+        self.target.load_state_dict(state["target"], strict=True)
+        self.predictor.load_state_dict(state["predictor"], strict=True)
+        self.obs_rms.load_state_dict(state["obs_rms"])
+        self.rew_rms.load_state_dict(state["rew_rms"])
 
 
 RND = RNDModule

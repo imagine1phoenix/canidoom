@@ -125,3 +125,17 @@ def test_task7_spawn_relative_exploration_cells_are_translation_invariant() -> N
         ra = sa.step(pa0, pa1, fwd)
         rb = sb.step(pb0, pb1, fwd)
         assert ra == pytest.approx(rb, abs=1e-6)
+
+
+def test_task4_damaging_non_lethal_shot_is_not_penalized() -> None:
+    shaper = RewardShaper()
+    shaper.reset([])
+    p0 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
+    p1 = {"x": 0.0, "y": 0.0, "kills": 0, "items": 0, "damage_taken": 0.0, "dead": False, "finished": False}
+    act_shoot = np.array([0, 0, 0, 0, 0, 0, 1, 0, 0], dtype=np.int8)
+    act_noop = np.zeros(9, dtype=np.int8)
+
+    r_shoot = shaper.step(p0, p1, act_shoot)
+    r_noop = shaper.step(p0, p1, act_noop)
+    assert shaper.last_components.get("wasted_shot", 0.0) == 0.0
+    assert r_shoot == pytest.approx(r_noop, abs=1e-6)
