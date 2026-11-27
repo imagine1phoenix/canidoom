@@ -196,15 +196,14 @@ def score_checkpoint(
     if device == "cpu":
         torch.set_num_threads(1)
 
-    # Instantiate agent
+    # Instantiate agent with strict checkpoint loading (fails loudly on missing/LFS/corrupt/mismatched weights)
     from gymnasium.spaces import Box, MultiBinary
+    from submission.agent import DEFAULT_CHECKPOINT_PATH
     obs_space = Box(-np.inf, np.inf, (1,), np.float32)
     act_space = MultiBinary(9)
-    if checkpoint_path is not None:
-        agent = DoomAgent(obs_space, act_space, device=device, checkpoint_path=checkpoint_path)
-        print(f"[Scorer] Loaded checkpoint: {checkpoint_path}")
-    else:
-        agent = DoomAgent(obs_space, act_space, device=device, checkpoint_path=None, allow_untrained=True)
+    resolved_ckpt = Path(checkpoint_path) if checkpoint_path is not None else DEFAULT_CHECKPOINT_PATH
+    agent = DoomAgent(obs_space, act_space, device=device, checkpoint_path=resolved_ckpt)
+    print(f"[Scorer] Strictly loaded checkpoint: {resolved_ckpt}")
 
     # Load map suite
     if wad_dir is not None and Path(wad_dir).is_dir():
@@ -273,6 +272,10 @@ def score_checkpoint(
                 "avg_kills": round(float(np.mean([r["kills"] for r in t_res])), 2),
                 "avg_exploration": round(float(np.mean([r["exploration_frac"] for r in t_res])), 3),
                 "deaths": sum(1 for r in t_res if r["dead"]),
+                "early_deaths": sum(1 for r in t_res if r["early_death"]),
+                "keys": sum(int(r["keys"]) for r in t_res),
+                "doors_opened": sum(int(r["doors_opened"]) for r in t_res),
+                "locks_unlocked": sum(int(r["locks_unlocked"]) for r in t_res),
                 "timeouts": sum(1 for r in t_res if r["timed_out"]),
             }
 
@@ -289,7 +292,9 @@ def score_checkpoint(
     }
 
     summary = {
-        "checkpoint": str(checkpoint_path) if checkpoint_path else "untrained_baseline",
+        "checkpoint": str(checkpoint_path) if checkpoint_path else "default_submission_checkpoint",
+        "score_type": "local_proxy",
+        "score_note": "Local proxy scoring formula; official organizer evaluation weights are hidden.",
         "total_score": round(total_score, 2),
         "tier_scores": tier_averages,
         "exit_rate": round(exit_rate, 3),
