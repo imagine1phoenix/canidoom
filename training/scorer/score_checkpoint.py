@@ -200,16 +200,11 @@ def score_checkpoint(
     from gymnasium.spaces import Box, MultiBinary
     obs_space = Box(-np.inf, np.inf, (1,), np.float32)
     act_space = MultiBinary(9)
-    agent = DoomAgent(obs_space, act_space, device=device)
-
-    # Load custom weights if supplied
     if checkpoint_path is not None:
-        p = Path(checkpoint_path)
-        if p.exists():
-            ckpt = torch.load(p, map_location=device, weights_only=False)
-            state_dict = ckpt.get("model_state_dict", ckpt)
-            agent.model.load_state_dict(state_dict, strict=False)
-            print(f"[Scorer] Loaded checkpoint: {p}")
+        agent = DoomAgent(obs_space, act_space, device=device, checkpoint_path=checkpoint_path)
+        print(f"[Scorer] Loaded checkpoint: {checkpoint_path}")
+    else:
+        agent = DoomAgent(obs_space, act_space, device=device, checkpoint_path=None, allow_untrained=True)
 
     # Load map suite
     if wad_dir is not None and Path(wad_dir).is_dir():

@@ -31,6 +31,47 @@ except ImportError:
 
 WEIGHTS_DIR = SUBMISSION_DIR / "weights"
 DEFAULT_CHECKPOINT_PATH = WEIGHTS_DIR / "best_agent.pt"
+_LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+
+
+def load_strict_checkpoint(
+    checkpoint_path: str | Path,
+    model: torch.nn.Module,
+    device: str | torch.device = "cpu",
+) -> dict:
+    """Strictly load a model checkpoint, failing loudly on missing, LFS pointer, corrupt, or mismatched weights."""
+    path = Path(checkpoint_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Checkpoint file not found: {path}")
+
+    with path.open("rb") as f:
+        head = f.read(64)
+    if head.startswith(_LFS_POINTER_PREFIX):
+        raise RuntimeError(
+            f"Checkpoint '{path}' is a Git LFS pointer, not a real weights file. "
+            "Run 'git lfs pull' to fetch the binary checkpoint."
+        )
+
+    try:
+        ckpt = torch.load(path, map_location=device, weights_only=False)
+    except Exception as exc:
+        raise RuntimeError(f"Corrupt or unreadable checkpoint '{path}': {exc}") from exc
+
+    if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+        state_dict = ckpt["model_state_dict"]
+    elif isinstance(ckpt, dict):
+        state_dict = ckpt
+    else:
+        raise RuntimeError(
+            f"Invalid checkpoint format in '{path}': expected dict or state_dict, got {type(ckpt).__name__}"
+        )
+
+    if not isinstance(state_dict, dict) or not state_dict:
+        raise RuntimeError(f"Empty or invalid state_dict in checkpoint '{path}'")
+
+    # Strict load: raises RuntimeError on any missing, unexpected, or shape-mismatched keys
+    model.load_state_dict(state_dict, strict=True)
+    return ckpt if isinstance(ckpt, dict) else {"model_state_dict": state_dict}
 
 
 class _NoStateType:
@@ -42,8 +83,16 @@ _NO_STATE = _NoStateType()
 class DoomAgent:
     """Zero-Shot Autonomous DOOM Agent."""
 
-    def __init__(self, observation_space=None, action_space=None, device: str = "cpu", tau: float = 0.85):
-        """Called once. Load weights onto `device` ("cuda" or "cpu")."""
+    def __init__(
+        self,
+        observation_space=None,
+        action_space=None,
+        device: str = "cpu",
+        tau: float = 0.85,
+        checkpoint_path: str | Path | None = DEFAULT_CHECKPOINT_PATH,
+        allow_untrained: bool = False,
+    ):
+        """Called once. Strictly loads trained weights onto `device` ("cuda" or "cpu")."""
         self.tau = max(1e-3, float(tau))
         # Strict latency guard: enforce 1 CPU thread to avoid competing with ViZDoom engine
         if device == "cpu":
@@ -63,15 +112,14 @@ class DoomAgent:
             slot_dim=8,
         ).to(device)
 
-        # Load weights if checkpoint exists
-        if DEFAULT_CHECKPOINT_PATH.exists():
-            try:
-                ckpt = torch.load(DEFAULT_CHECKPOINT_PATH, map_location=device, weights_only=False)
-                state_dict = ckpt.get("model_state_dict", ckpt)
-                self.model.load_state_dict(state_dict, strict=False)
-            except Exception as e:
-                # Fallback to initialized model if checkpoint format differs
-                pass
+        if allow_untrained and checkpoint_path is None:
+            pass
+        else:
+            if checkpoint_path is None:
+                raise FileNotFoundError(
+                    "checkpoint_path cannot be None unless allow_untrained=True is explicitly requested."
+                )
+            load_strict_checkpoint(checkpoint_path, self.model, device=device)
 
         self.model.eval()
 
