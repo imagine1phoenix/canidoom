@@ -148,8 +148,11 @@ def _draw_game_stage(
     map_txt = font.render(f"MAP: {hud_meta.get('map_label', 'MAP01')}", True, CLR_TEXT_PRIMARY)
     screen.blit(map_txt, (x + 116, y + 7))
     
-    ckpt_txt = small_font.render(f"Ckpt: {hud_meta.get('ckpt_step', 0):,} stp (u{hud_meta.get('ckpt_upd', 0)})", True, CLR_TEXT_MUTED)
-    screen.blit(ckpt_txt, (x + 280, y + 9))
+    ckpt_step_val = int(hud_meta.get('ckpt_step', 0))
+    ckpt_str = f"{ckpt_step_val / 1000.0:.1f}k" if ckpt_step_val >= 1000 else str(ckpt_step_val)
+    ckpt_txt = small_font.render(f"Ckpt: {ckpt_str} (u{hud_meta.get('ckpt_upd', 0)})", True, CLR_TEXT_MUTED)
+    ckpt_x = x + 116 + map_txt.get_width() + 14
+    screen.blit(ckpt_txt, (ckpt_x, y + 9))
     
     fps_str = hud_meta.get("fps_str", "35 FPS")
     perf_txt = small_font.render(f"Act: {hud_meta.get('act_ms', 0.0):.2f} ms | {fps_str} | Ep #{hud_meta.get('episode', 1)} Stp {hud_meta.get('ep_step', 0)}", True, CLR_ACCENT_CYAN)
