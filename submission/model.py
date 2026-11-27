@@ -7,16 +7,19 @@ while supporting `submission/agent.py` keyword calls cleanly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-try:
-    from .preprocessing import ModelInputs
-except ImportError:
-    from preprocessing import ModelInputs  # type: ignore[import-not-found]
+if TYPE_CHECKING:
+    from submission.preprocessing import ModelInputs
+else:
+    try:
+        from .preprocessing import ModelInputs
+    except ImportError:
+        from preprocessing import ModelInputs
 
 
 @dataclass
