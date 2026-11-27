@@ -1,62 +1,80 @@
 {
   "checkpoint": "submission/weights/best_agent.pt",
-  "total_score": 2126.58,
+  "score_type": "local_proxy",
+  "score_note": "Local proxy scoring formula; official organizer evaluation weights are hidden.",
+  "total_score": 2733.5,
   "tier_scores": {
-    "1": 64.98571428571428,
-    "2": 56.03463342683045,
-    "3": 69.65227082022236,
-    "4": 122.40850340136056
+    "1": 75.33968253968254,
+    "2": 62.6155624335042,
+    "3": 87.3155099044023,
+    "4": 175.9925170068027
   },
-  "exit_rate": 0.222,
-  "mean_act_ms": 1.04,
-  "p99_act_ms": 9.41,
+  "exit_rate": 0.296,
+  "mean_act_ms": 1.59,
+  "p99_act_ms": 9.08,
   "passed_limits": true,
   "maps_evaluated": 27,
   "diagnostics": {
-    "total_kills": 113,
-    "total_keys": 6,
-    "total_doors_opened": 36,
-    "total_locks_unlocked": 5,
-    "deaths": 10,
-    "early_deaths": 6,
-    "timeouts": 11,
-    "mean_exploration_frac": 0.527,
+    "total_kills": 138,
+    "total_keys": 8,
+    "total_doors_opened": 38,
+    "total_locks_unlocked": 6,
+    "deaths": 3,
+    "early_deaths": 1,
+    "timeouts": 16,
+    "mean_exploration_frac": 0.543,
     "per_tier": {
       "1": {
         "count": 6,
-        "exits": 5,
-        "avg_score": 64.99,
-        "avg_kills": 3.83,
-        "avg_exploration": 0.958,
-        "deaths": 1,
+        "exits": 6,
+        "avg_score": 75.34,
+        "avg_kills": 4.0,
+        "avg_exploration": 1.0,
+        "deaths": 0,
+        "early_deaths": 0,
+        "keys": 0,
+        "doors_opened": 0,
+        "locks_unlocked": 0,
         "timeouts": 0
       },
       "2": {
         "count": 7,
         "exits": 1,
-        "avg_score": 56.03,
-        "avg_kills": 4.29,
-        "avg_exploration": 0.599,
-        "deaths": 2,
-        "timeouts": 4
+        "avg_score": 62.62,
+        "avg_kills": 5.14,
+        "avg_exploration": 0.596,
+        "deaths": 1,
+        "early_deaths": 0,
+        "keys": 0,
+        "doors_opened": 14,
+        "locks_unlocked": 0,
+        "timeouts": 5
       },
       "3": {
         "count": 7,
-        "exits": 0,
-        "avg_score": 69.65,
-        "avg_kills": 2.86,
-        "avg_exploration": 0.379,
+        "exits": 1,
+        "avg_score": 87.32,
+        "avg_kills": 2.71,
+        "avg_exploration": 0.345,
         "deaths": 2,
-        "timeouts": 5
+        "early_deaths": 1,
+        "keys": 3,
+        "doors_opened": 8,
+        "locks_unlocked": 2,
+        "timeouts": 4
       },
       "4": {
         "count": 7,
         "exits": 0,
-        "avg_score": 122.41,
-        "avg_kills": 5.71,
-        "avg_exploration": 0.232,
-        "deaths": 5,
-        "timeouts": 2
+        "avg_score": 175.99,
+        "avg_kills": 8.43,
+        "avg_exploration": 0.297,
+        "deaths": 0,
+        "early_deaths": 0,
+        "keys": 5,
+        "doors_opened": 16,
+        "locks_unlocked": 4,
+        "timeouts": 7
       }
     }
   },
@@ -67,71 +85,71 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 76.2904761904762,
+      "score": 78.97142857142858,
       "kills": 5,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 1.3472030627244247
+      "mean_act_ms": 1.550597215628288
     },
     {
       "id": "heldout_t2_1002",
       "tier": 2,
       "exit_reached": false,
-      "dead": false,
-      "timed_out": true,
-      "score": 52.825,
-      "kills": 4,
+      "dead": true,
+      "timed_out": false,
+      "score": 30.0,
+      "kills": 2,
       "keys": 0,
-      "exploration_frac": 0.833,
-      "mean_act_ms": 0.9666773064860276
+      "exploration_frac": 0.5,
+      "mean_act_ms": 1.511276471461677
     },
     {
       "id": "heldout_t3_1003",
       "tier": 3,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 55.625,
-      "kills": 3,
+      "dead": false,
+      "timed_out": true,
+      "score": 23.625,
+      "kills": 2,
       "keys": 0,
-      "exploration_frac": 0.5,
-      "mean_act_ms": 0.9697462755269302
+      "exploration_frac": 0.125,
+      "mean_act_ms": 1.4629787961131937
     },
     {
       "id": "heldout_t4_1004",
       "tier": 4,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 187.0285714285714,
+      "dead": false,
+      "timed_out": true,
+      "score": 188.22857142857146,
       "kills": 7,
       "keys": 1,
       "exploration_frac": 0.357,
-      "mean_act_ms": 0.974491985755417
+      "mean_act_ms": 1.9029092028116186
     },
     {
       "id": "heldout_t1_1005",
       "tier": 1,
-      "exit_reached": false,
-      "dead": true,
+      "exit_reached": true,
+      "dead": false,
       "timed_out": false,
-      "score": 15.0,
-      "kills": 4,
+      "score": 75.43809523809524,
+      "kills": 5,
       "keys": 0,
-      "exploration_frac": 0.75,
-      "mean_act_ms": 0.9892803974691089
+      "exploration_frac": 1.0,
+      "mean_act_ms": 1.919302133913676
     },
     {
       "id": "heldout_t2_1006",
       "tier": 2,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 27.0,
-      "kills": 3,
+      "dead": false,
+      "timed_out": true,
+      "score": 68.1,
+      "kills": 7,
       "keys": 0,
-      "exploration_frac": 0.4,
-      "mean_act_ms": 0.9838030636800748
+      "exploration_frac": 0.5,
+      "mean_act_ms": 2.6925507124092074
     },
     {
       "id": "heldout_t3_1007",
@@ -139,23 +157,23 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 33.291666666666664,
+      "score": 79.875,
       "kills": 2,
-      "keys": 0,
-      "exploration_frac": 0.333,
-      "mean_act_ms": 0.9580231870945898
+      "keys": 1,
+      "exploration_frac": 0.5,
+      "mean_act_ms": 1.9747133234826226
     },
     {
       "id": "heldout_t4_1008",
       "tier": 4,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 71.20714285714286,
-      "kills": 5,
+      "dead": false,
+      "timed_out": true,
+      "score": 89.20714285714286,
+      "kills": 6,
       "keys": 0,
       "exploration_frac": 0.214,
-      "mean_act_ms": 0.9627050215080614
+      "mean_act_ms": 1.7430113814493997
     },
     {
       "id": "heldout_t1_1009",
@@ -163,11 +181,11 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 70.15714285714286,
+      "score": 72.28571428571428,
       "kills": 2,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 0.9786388849185661
+      "mean_act_ms": 1.75543826893528
     },
     {
       "id": "heldout_t2_1010",
@@ -175,35 +193,35 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 122.92857142857142,
+      "score": 125.98571428571428,
       "kills": 4,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 0.9726097855223891
+      "mean_act_ms": 1.613022636141793
     },
     {
       "id": "heldout_t3_1011",
       "tier": 3,
-      "exit_reached": false,
-      "dead": true,
+      "exit_reached": true,
+      "dead": false,
       "timed_out": false,
-      "score": 20.83333333333333,
-      "kills": 1,
-      "keys": 0,
-      "exploration_frac": 0.167,
-      "mean_act_ms": 1.0460821336722759
+      "score": 278.7261904761905,
+      "kills": 3,
+      "keys": 1,
+      "exploration_frac": 1.0,
+      "mean_act_ms": 1.377548776470753
     },
     {
       "id": "heldout_t4_1012",
       "tier": 4,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 19.285714285714285,
-      "kills": 2,
-      "keys": 0,
-      "exploration_frac": 0.071,
-      "mean_act_ms": 1.383928753096949
+      "dead": false,
+      "timed_out": true,
+      "score": 228.60000000000002,
+      "kills": 8,
+      "keys": 1,
+      "exploration_frac": 0.5,
+      "mean_act_ms": 1.8803127478652943
     },
     {
       "id": "heldout_t1_1013",
@@ -211,35 +229,35 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 71.21904761904761,
+      "score": 75.40952380952382,
       "kills": 2,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 1.0302752472411107
+      "mean_act_ms": 1.7575431106266595
     },
     {
       "id": "heldout_t2_1014",
       "tier": 2,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 24.0,
-      "kills": 1,
+      "dead": false,
+      "timed_out": true,
+      "score": 54.525000000000006,
+      "kills": 6,
       "keys": 0,
-      "exploration_frac": 0.3,
-      "mean_act_ms": 1.359518202731297
+      "exploration_frac": 0.5,
+      "mean_act_ms": 1.2953426830270993
     },
     {
       "id": "heldout_t3_1015",
       "tier": 3,
       "exit_reached": false,
-      "dead": false,
-      "timed_out": true,
-      "score": 126.625,
-      "kills": 2,
-      "keys": 1,
-      "exploration_frac": 0.375,
-      "mean_act_ms": 0.977573729829774
+      "dead": true,
+      "timed_out": false,
+      "score": 18.75,
+      "kills": 1,
+      "keys": 0,
+      "exploration_frac": 0.125,
+      "mean_act_ms": 1.4994728126718353
     },
     {
       "id": "heldout_t4_1016",
@@ -247,11 +265,11 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 221.37857142857143,
-      "kills": 8,
+      "score": 259.92857142857144,
+      "kills": 12,
       "keys": 1,
       "exploration_frac": 0.357,
-      "mean_act_ms": 0.9665674039362264
+      "mean_act_ms": 1.3354857960560669
     },
     {
       "id": "heldout_t1_1017",
@@ -259,11 +277,11 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 78.0047619047619,
+      "score": 75.47619047619048,
       "kills": 5,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 0.9840146693236688
+      "mean_act_ms": 1.7110835170405765
     },
     {
       "id": "heldout_t2_1018",
@@ -275,7 +293,7 @@
       "kills": 4,
       "keys": 0,
       "exploration_frac": 0.833,
-      "mean_act_ms": 0.9642745355432409
+      "mean_act_ms": 1.21245245610009
     },
     {
       "id": "heldout_t3_1019",
@@ -283,11 +301,11 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 42.5,
+      "score": 30.0,
       "kills": 2,
       "keys": 0,
-      "exploration_frac": 0.375,
-      "mean_act_ms": 1.0127334632090337
+      "exploration_frac": 0.125,
+      "mean_act_ms": 1.2171441108720111
     },
     {
       "id": "heldout_t4_1020",
@@ -299,7 +317,7 @@
       "kills": 4,
       "keys": 1,
       "exploration_frac": 0.312,
-      "mean_act_ms": 0.9958537763893782
+      "mean_act_ms": 1.1014583694937063
     },
     {
       "id": "heldout_t1_1021",
@@ -307,11 +325,11 @@
       "exit_reached": true,
       "dead": false,
       "timed_out": false,
-      "score": 79.24285714285715,
+      "score": 74.45714285714286,
       "kills": 5,
       "keys": 0,
       "exploration_frac": 1.0,
-      "mean_act_ms": 0.9664024290335268
+      "mean_act_ms": 1.2422100999200203
     },
     {
       "id": "heldout_t2_1022",
@@ -319,11 +337,11 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 71.85,
-      "kills": 8,
+      "score": 67.80000000000001,
+      "kills": 7,
       "keys": 0,
       "exploration_frac": 0.7,
-      "mean_act_ms": 1.040397752298131
+      "mean_act_ms": 1.4792912589785243
     },
     {
       "id": "heldout_t3_1023",
@@ -331,23 +349,23 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 170.66666666666666,
-      "kills": 4,
+      "score": 147.125,
+      "kills": 3,
       "keys": 1,
-      "exploration_frac": 0.833,
-      "mean_act_ms": 0.99439096625983
+      "exploration_frac": 0.5,
+      "mean_act_ms": 1.7284062816872305
     },
     {
       "id": "heldout_t4_1024",
       "tier": 4,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 197.10000000000002,
-      "kills": 7,
+      "dead": false,
+      "timed_out": true,
+      "score": 207.89999999999998,
+      "kills": 8,
       "keys": 1,
       "exploration_frac": 0.25,
-      "mean_act_ms": 1.0327506037231984
+      "mean_act_ms": 1.5811018720878998
     },
     {
       "id": "freedoom2_map01",
@@ -355,35 +373,35 @@
       "exit_reached": false,
       "dead": false,
       "timed_out": true,
-      "score": 36.313862559241706,
+      "score": 34.57322274881517,
       "kills": 6,
       "keys": 0,
-      "exploration_frac": 0.128,
-      "mean_act_ms": 1.0225615864952229
+      "exploration_frac": 0.137,
+      "mean_act_ms": 1.4555432645803583
     },
     {
       "id": "freedoom2_map02",
       "tier": 3,
       "exit_reached": false,
-      "dead": false,
-      "timed_out": true,
-      "score": 38.024229074889874,
+      "dead": true,
+      "timed_out": false,
+      "score": 33.10737885462555,
       "kills": 6,
       "keys": 0,
-      "exploration_frac": 0.07,
-      "mean_act_ms": 1.0902093723416328
+      "exploration_frac": 0.04,
+      "mean_act_ms": 1.4365759249058294
     },
     {
       "id": "freedoom2_map03",
       "tier": 4,
       "exit_reached": false,
-      "dead": true,
-      "timed_out": false,
-      "score": 35.30952380952381,
-      "kills": 7,
+      "dead": false,
+      "timed_out": true,
+      "score": 132.53333333333333,
+      "kills": 14,
       "keys": 0,
-      "exploration_frac": 0.063,
-      "mean_act_ms": 1.16290552818698
+      "exploration_frac": 0.089,
+      "mean_act_ms": 1.4706328596054976
     }
   ]
 }
